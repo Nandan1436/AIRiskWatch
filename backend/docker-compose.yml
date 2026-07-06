@@ -1,3 +1,7 @@
+# Pin the compose project name so the seeded pgdata volume keeps working
+# after the compose file moved from the repo root into backend/.
+name: airiskwatch
+
 services:
   db:
     image: pgvector/pgvector:pg16
