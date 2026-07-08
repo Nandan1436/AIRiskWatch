@@ -6,6 +6,7 @@ CSET and GMF classifications are out of scope for this pass.
 """
 import json
 import os
+import re
 
 import pandas as pd
 import psycopg2
@@ -15,6 +16,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SEED_DATA_DIR = os.environ["SEED_DATA_DIR"]
+
+TAXONOMY_PREFIX_RE = re.compile(r"^\d+(\.\d+)*\.\s*")
+
+
+def strip_taxonomy_prefix(value):
+    if pd.isna(value):
+        return value
+    return TAXONOMY_PREFIX_RE.sub("", value).strip()
 
 
 def get_conn():
@@ -126,8 +135,8 @@ def insert_mit_classifications(cur, df):
     rows = [
         (
             int(r["Incident ID"]),
-            r["Risk Domain"] if pd.notna(r["Risk Domain"]) else None,
-            r["Risk Subdomain"] if pd.notna(r["Risk Subdomain"]) else None,
+            strip_taxonomy_prefix(r["Risk Domain"]) if pd.notna(r["Risk Domain"]) else None,
+            strip_taxonomy_prefix(r["Risk Subdomain"]) if pd.notna(r["Risk Subdomain"]) else None,
             r["Entity"] if pd.notna(r["Entity"]) else None,
             r["Timing"] if pd.notna(r["Timing"]) else None,
             r["Intent"] if pd.notna(r["Intent"]) else None,

@@ -62,7 +62,7 @@ app/
 ### Examples
 
 ```bash
-curl "http://127.0.0.1:8000/api/incidents/?risk_domain=3.%20Misinformation&limit=5"
+curl "http://127.0.0.1:8000/api/incidents/?risk_domain=Misinformation&limit=5"
 curl "http://127.0.0.1:8000/api/incidents/?search=deepfake&intent=Intentional"
 curl "http://127.0.0.1:8000/api/incidents/1"
 curl "http://127.0.0.1:8000/api/risk-domains/"
