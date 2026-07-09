@@ -7,6 +7,7 @@ from app.database import get_db
 from app.schemas.incident_schema import (
     IncidentDetailResponse,
     IncidentListResponse,
+    IncidentTrendResponse,
 )
 from app.services.incident_service import IncidentService
 
@@ -45,6 +46,31 @@ def list_incidents(
     )
     return IncidentListResponse(
         items=incidents, total=total, limit=limit, offset=offset
+    )
+
+
+@router.get("/trend", response_model=IncidentTrendResponse)
+def get_incident_trend(
+    risk_domain: str | None = None,
+    risk_subdomain: str | None = None,
+    causal_entity: str | None = None,
+    timing: str | None = None,
+    intent: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    incident_service: IncidentService = Depends(get_incident_service),
+) -> IncidentTrendResponse:
+    points = incident_service.get_trend(
+        risk_domain=risk_domain,
+        risk_subdomain=risk_subdomain,
+        causal_entity=causal_entity,
+        timing=timing,
+        intent=intent,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    return IncidentTrendResponse(
+        items=[{"year": year, "count": count} for year, count in points]
     )
 
 

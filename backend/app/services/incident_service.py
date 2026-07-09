@@ -44,13 +44,42 @@ class IncidentService:
         incidents = (
             self.db.scalars(
                 query.options(selectinload(Incident.classifications))
-                .order_by(Incident.incident_id)
+                .order_by(Incident.incident_date.desc(), Incident.incident_id.desc())
                 .limit(limit)
                 .offset(offset)
             )
             .all()
         )
         return list(incidents), total or 0
+
+    def get_trend(
+        self,
+        risk_domain: str | None = None,
+        risk_subdomain: str | None = None,
+        causal_entity: str | None = None,
+        timing: str | None = None,
+        intent: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[tuple[int, int]]:
+        year = func.extract("year", Incident.incident_date).label("year")
+        query = (
+            select(year, func.count(func.distinct(Incident.incident_id)))
+            .where(Incident.incident_date.is_not(None))
+        )
+        query = self._apply_filters(
+            query,
+            search=None,
+            risk_domain=risk_domain,
+            risk_subdomain=risk_subdomain,
+            causal_entity=causal_entity,
+            timing=timing,
+            intent=intent,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        rows = self.db.execute(query.group_by(year).order_by(year)).all()
+        return [(int(row_year), count) for row_year, count in rows]
 
     def get_incident(self, incident_id: int) -> Incident | None:
         return self.db.scalar(

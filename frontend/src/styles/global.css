@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+:root,
+[data-theme="dark"] {
+  --bg: #0a121c;
+  --bg-2: #0c1622;
+  --surface: #101e2e;
+  --surface-2: #14273a;
+  --border: #1e3550;
+  --border-soft: #16283c;
+  --fg: #eaf0f6;
+  --fg-dim: #9db0c4;
+  --fg-faint: #64798f;
+  --accent: #2ab3e6;
+  --accent-strong: #38bdf0;
+  --green: #6fb63c;
+  --link: #4cc2ed;
+  --link-hover: #7fd4f2;
+  --chart-grid: #1b3049;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
+  --shadow-pop: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(6, 12, 20, 0.72);
+}
+
+[data-theme="light"] {
+  --bg: #edf1f5;
+  --bg-2: #e6edf3;
+  --surface: #ffffff;
+  --surface-2: #f4f7fa;
+  --border: #dce3eb;
+  --border-soft: #e9eef3;
+  --fg: #0c1826;
+  --fg-dim: #52657a;
+  --fg-faint: #8494a5;
+  --accent: #0a6fb0;
+  --accent-strong: #004081;
+  --green: #4c8f27;
+  --link: #0a6fb0;
+  --link-hover: #004081;
+  --chart-grid: #e4eaf0;
+  --shadow: 0 1px 2px rgba(16, 40, 70, 0.06), 0 10px 30px rgba(0, 64, 129, 0.07);
+  --shadow-pop: 0 24px 60px rgba(0, 64, 129, 0.16);
+  --scrim: rgba(230, 237, 243, 0.7);
+}
+
+:root {
+  --dom-malicious: #e0603a;
+  --dom-safety: #2aa7d8;
+  --dom-discrimination: #9168c9;
+  --dom-misinfo: #e0a32e;
+  --dom-privacy: #4fa35a;
+  --dom-hci: #c6608f;
+  --dom-socioecon: #7e93ad;
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-fg: var(--fg);
+  --color-fg-dim: var(--fg-dim);
+  --color-fg-faint: var(--fg-faint);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-green: var(--green);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+a {
+  color: var(--link);
+}
+
+a:hover {
+  color: var(--link-hover);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes growBar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes drawArea {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

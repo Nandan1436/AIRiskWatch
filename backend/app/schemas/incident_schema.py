@@ -28,3 +28,12 @@ class IncidentListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class IncidentTrendPoint(BaseModel):
+    year: int
+    count: int
+
+
+class IncidentTrendResponse(BaseModel):
+    items: list[IncidentTrendPoint]
