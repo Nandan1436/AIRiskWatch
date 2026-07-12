@@ -1,4 +1,8 @@
-import { IncidentInsightsContainer, IncidentListContainer } from "../containers";
+import {
+  DashboardSummaryContainer,
+  IncidentInsightsContainer,
+  IncidentListContainer,
+} from "../containers";
 
 export function IncidentList() {
   return (
@@ -31,6 +35,7 @@ export function IncidentList() {
       </div>
 
       <div className="max-w-[1240px] px-10 pb-16 pt-8">
+        <DashboardSummaryContainer />
         <IncidentInsightsContainer />
         <IncidentListContainer />
       </div>

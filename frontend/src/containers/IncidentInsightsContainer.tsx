@@ -1,6 +1,13 @@
 import { useRiskDomainsQuery } from "../hooks/riskDomainHooks";
 import { useIncidentTrendQuery } from "../hooks/incidentHooks";
-import { RiskDomainBarChart, IncidentTrendChart } from "../components/charts";
+import { useClassificationBreakdownQuery } from "../hooks/classificationBreakdownHooks";
+import { useOrganizationsQuery } from "../hooks/organizationHooks";
+import {
+  RiskDomainBarChart,
+  IncidentTrendChart,
+  ClassificationBreakdownChart,
+  OrganizationLeaderboard,
+} from "../components/charts";
 import { LoadingSpinner, ErrorMessage } from "../components/ui";
 
 export function IncidentInsightsContainer() {
@@ -14,6 +21,22 @@ export function IncidentInsightsContainer() {
     isLoading: isLoadingTrend,
     error: trendError,
   } = useIncidentTrendQuery({});
+  const {
+    breakdown,
+    isLoading: isLoadingBreakdown,
+    error: breakdownError,
+  } = useClassificationBreakdownQuery();
+  const {
+    organizations,
+    totalAttributedIncidents,
+    unattributedIncidentCount,
+    isLoading: isLoadingOrgs,
+    error: orgsError,
+  } = useOrganizationsQuery({ limit: 10 });
+
+  const isLoading =
+    isLoadingDomains || isLoadingTrend || isLoadingBreakdown || isLoadingOrgs;
+  const error = domainsError ?? trendError ?? breakdownError ?? orgsError;
 
   return (
     <section className="mb-10">
@@ -24,20 +47,22 @@ export function IncidentInsightsContainer() {
         Where should oversight attention concentrate?
       </h2>
       <p className="mb-[22px] max-w-[660px] text-[14px] text-fg-dim">
-        Two views of the same incident record: which risk domains dominate,
-        and how reporting volume has changed over time.
+        Risk domains, reporting trend, cause and intent, and the most
+        frequently named organizations.
       </p>
 
-      {(isLoadingDomains || isLoadingTrend) && <LoadingSpinner />}
-      {(domainsError || trendError) && (
-        <ErrorMessage
-          message={domainsError ?? trendError ?? "Unable to load insights."}
-        />
-      )}
-      {!isLoadingDomains && !isLoadingTrend && !domainsError && !trendError && (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.05fr_1fr]">
-          <RiskDomainBarChart riskDomains={riskDomains} />
+      {isLoading && <LoadingSpinner />}
+      {error && <ErrorMessage message={error ?? "Unable to load insights."} />}
+      {!isLoading && !error && breakdown && (
+        <div className="flex flex-col gap-5">
           <IncidentTrendChart trend={trend} />
+          <RiskDomainBarChart riskDomains={riskDomains} />
+          <ClassificationBreakdownChart breakdown={breakdown} />
+          <OrganizationLeaderboard
+            organizations={organizations}
+            totalAttributedIncidents={totalAttributedIncidents}
+            unattributedIncidentCount={unattributedIncidentCount}
+          />
         </div>
       )}
     </section>
