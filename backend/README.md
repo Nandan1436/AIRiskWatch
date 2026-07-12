@@ -4,28 +4,6 @@ AI incident intelligence platform. Phase 0 (seed import) and Phase 1 (read-only 
 
 All commands below run from `backend/`.
 
-## Setup
-
-```bash
-cp .env.example .env        # set SEED_DATA_DIR to a path relative to backend/, e.g. ./MIT_AI_RISK_REPOSITORY/backup-20260601120109
-docker compose up -d
-python -m venv .venv
-.venv\Scripts\activate       # Windows
-pip install -r requirements.txt
-docker compose exec -T db psql -U airiskwatch -d airiskwatch -f /dev/stdin < db/schema.sql   # bash/git-bash
-python scripts/import_seed.py
-```
-
-On Windows PowerShell, `<` redirection isn't supported — load the schema with:
-
-```powershell
-Get-Content db\schema.sql -Raw | docker compose exec -T db psql -U airiskwatch -d airiskwatch
-```
-
-> The compose project name is pinned to `airiskwatch` in `docker-compose.yml` so the
-> seeded `airiskwatch_pgdata` volume keeps working now that the compose file lives in
-> `backend/` (Compose otherwise derives the project name from the folder name).
-
 ## Run
 
 ```bash
