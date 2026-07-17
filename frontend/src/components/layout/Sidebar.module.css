@@ -59,6 +59,12 @@
 }
 
 .navItemActive {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 13.5px;
   background: var(--surface-2);
   color: var(--fg);
   font-weight: 600;
@@ -75,35 +81,39 @@
   @apply mb-[9px] text-[10.5px] font-semibold tracking-[.09em] uppercase text-fg-faint;
 }
 
-.toggleTrack {
-  display: flex;
-  gap: 5px;
-  padding: 5px;
-  border-radius: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-
-.toggleBtn {
-  flex: 1;
+.themeToggle {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: none;
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
+  justify-content: space-between;
+  width: 60px;
+  height: 30px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   cursor: pointer;
-  transition: all 0.15s ease;
-  background: transparent;
+}
+
+.themeToggleIcon {
+  position: relative;
+  z-index: 1;
+  display: flex;
   color: var(--fg-dim);
 }
 
-.toggleBtnActive {
+.themeToggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   background: var(--accent-strong);
-  color: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  transition: transform 0.2s ease;
+}
+
+.themeToggle[data-theme="dark"] .themeToggleThumb {
+  transform: translateX(32px);
 }

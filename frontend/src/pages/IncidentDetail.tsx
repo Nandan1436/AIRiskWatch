@@ -24,7 +24,7 @@ export function IncidentDetail() {
         </Link>
       </div>
 
-      <div className="max-w-[940px] px-10 pb-[72px] pt-8">
+      <div className="px-10 pb-[72px] pt-8">
         <IncidentDetailContainer />
       </div>
     </div>

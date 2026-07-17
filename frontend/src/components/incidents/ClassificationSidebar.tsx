@@ -169,6 +169,12 @@ export function ClassificationSidebar({
           </div>
         </div>
       )}
+
+      {attributes.length === 0 && domains.length === 0 && (
+        <div className="border-t border-border-soft pt-[13px] text-[12.5px] text-fg-faint">
+          Not yet classified against the MIT taxonomy.
+        </div>
+      )}
     </aside>
   );
 }

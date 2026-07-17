@@ -34,11 +34,13 @@ export function IncidentDetailContainer() {
           {incident.title ?? `Incident #${incident.incident_id}`}
         </h1>
 
-        <div className="mb-[26px] flex flex-wrap gap-[7px]">
-          {classifications.map((c, i) => (
-            <ClassificationBadge key={i} classification={c} variant="full" />
-          ))}
-        </div>
+        {classifications.length > 0 && (
+          <div className="mb-[26px] flex flex-wrap gap-[7px]">
+            {classifications.map((c, i) => (
+              <ClassificationBadge key={i} classification={c} variant="full" />
+            ))}
+          </div>
+        )}
 
         <div className="mb-2.5 text-[10.5px] font-semibold uppercase tracking-[.09em] text-fg-faint">
           Summary
