@@ -25,7 +25,7 @@ The `backup-…` folder is a **full MongoDB dump of the AI Incident Database (AI
 
 1. **AIID already models exactly what you proposed** — an `incident` (1) → `reports` (many) structure, named `entities` with roles (developer/deployer/harmed), `entity_relationships`, and several `taxa`. You are not inventing this schema; you are *adopting a proven one and extending it*.
 2. **You already have labelled ground-truth classifications** for 1,242 incidents (MIT) + others. This is gold: it becomes your **evaluation set** for measuring LLM classification accuracy (answers your accuracy question — see §8.3).
-3. **The Mitigation Database is a *separate* taxonomy and is NOT pre-linked to incidents.** It is a catalogue of 831 best-practice/governance actions (e.g. "AI Safety Team", red-teaming, data-provenance controls) grouped into 4 categories. Mapping *incident → recommended mitigations* is something **you design** (see §8.5). That mapping work is a legitimate, substantial scope addition.
+3. **The Mitigation Database is a *separate* taxonomy and is NOT pre-linked to incidents.** It is a catalogue of 831 best-practice/governance actions in the raw data dump. **Descoped** (decision, 2026-07-30): building the incident→mitigation crosswalk was judged not worth the effort relative to its payoff, and the project scope point it used to fill is now covered by **user accounts & preference-based personalization** instead — see §1, F6/F7, §8.5, Phase 5. The Mitigation Database CSV is left in the table above only as a record of what's in the raw dump; it is not imported or used.
 
 ### MIT Risk Domains present in the data (incident counts)
 ```
@@ -39,14 +39,6 @@ The `backup-…` folder is a **full MongoDB dump of the AI Incident Database (AI
 ```
 Causal axes: Entity = {AI: 828, Human: 405}; Timing = {Post-deployment: 1211, Pre: 23}; Intent = {Unintentional: 646, Intentional: 579}.
 
-### Mitigation taxonomy (831 actions)
-```
-Group 1: Governance & Oversight        (250 actions, codes 1.1–1.7)
-Group 2: (102 actions, codes 2.1–2.4)
-Group 3: (297 actions, codes 3.1–3.6)
-Group 4: (171 actions, codes 4.1–4.6)
-```
-
 ---
 
 ## 1. Vision & scope (responding to the "increase scope" review)
@@ -55,7 +47,7 @@ The board's "two-day task" comment is about *visible system depth*, not the idea
 
 1. **Multi-taxonomy classification** — not one taxonomy but MIT Domain + Causal (and optionally CSET/GMF), with a **quantified accuracy evaluation** against the labelled data.
 2. **Entity resolution & deduplication pipeline** — the genuinely hard ML/engineering problem of deciding "is this a new incident or another report of an existing one?"
-3. **Mitigation recommendation engine** — incident → ranked, relevant mitigation actions, a contribution that does not exist in any current tool.
+3. **Personalized relevance & alerting** — registered users describe the AI system they're building at signup; the platform matches new/existing incidents against that profile so each user's dashboard (and, as a stretch, notifications) surfaces only what's relevant to them. (Replaces the earlier mitigation-recommendation idea — decision, 2026-07-30: see §8.5.)
 4. **Semantic / GraphRAG search** — natural-language querying over a knowledge base.
 5. **Live ingestion** — scraper + scheduling + admin/monitoring panel that grows the KB automatically.
 
@@ -70,11 +62,11 @@ Three personas, each needing different things from the same KB:
 ### Persona A — Policy maker / AI-governance analyst
 - *"As a policy maker, I want to see which AI risk domains are growing fastest over the last 3 years, so I can prioritise regulation."*
 - *"As a policy maker, I want to ask in plain language: 'what kinds of AI systems are causing the most harm to women and children?' and get a ranked, evidence-backed answer."*
-- *"As a policy maker, I want to see, for a given risk subdomain, which mitigation actions the literature recommends."*
 
 ### Persona B — Developer / AI engineer
-- *"As a developer about to build [an obstacle-detection aid for blind users], I want to describe my system and see what incidents similar systems have caused, so I can design around those failure modes."*
-- *"As a developer, I want to filter incidents by AI technology / task and see the concrete technical failure and the recommended mitigations."*
+- *"As a developer about to build [an obstacle-detection aid for blind users], I want to describe my system and see what incidents similar systems have caused, so I can design around those failure modes."* (F3)
+- *"As a developer, I want to sign up and describe the AI system I'm building once, so that afterwards my dashboard only shows incidents relevant to it, without re-searching every time."* (F6)
+- *"As a developer, I want to be notified when a newly ingested incident closely matches my registered system, so I don't have to keep checking the dashboard myself."* (F7, stretch)
 
 ### Persona C — Researcher
 - *"As a researcher, I want to explore the relationship graph between developers, deployers, and harmed parties across incidents."*
@@ -88,19 +80,20 @@ Three personas, each needing different things from the same KB:
 ## 3. Feature list
 
 **Public / user features**
-- F1. Incident explorer (list + detail: description, classifications, linked reports, entities, recommended mitigations).
+- F1. Incident explorer (list + detail: description, classifications, linked reports, entities).
 - F2. Persona-aware analytics dashboard (see §6 for which charts for whom).
 - F3. Natural-language semantic search (RAG / GraphRAG) returning relevant incidents + a synthesised, **cited** summary.
 - F4. Faceted filtering: risk domain/subdomain, causal axes, organisation/entity, sector, harmed party, time range.
 - F5. Entity & relationship view (organisation → its incidents → harmed parties).
-- F6. Mitigation lookup (per incident and per risk subdomain).
-- F7. Saved searches / export.
+- F6. **User accounts & preference-based personalization.** Signup captures a free-text description of the AI system being built + its stakeholders; embedded once with the same model as F3 and stored as the user's profile vector. The dashboard filters/ranks incidents against that vector so a signed-in user sees what's relevant to them without re-querying. (Replaces the earlier mitigation-lookup feature — decision, 2026-07-30, see §8.5.)
+- F7. **Notification delivery** (stretch — build F6's dashboard filtering first; this is the harder, optional extension). When a newly ingested incident's embedding matches a user's stored profile above a threshold, notify them (email/in-app). If it doesn't ship, F6's personalized dashboard view is the load-bearing version of this idea.
+- F8. Saved searches / export.
 
 **Admin & pipeline features**
-- F8. Source management (add RSS/HTML sources, selectors, enable/disable).
-- F9. Scrape orchestration: scheduled (cron) **and** manual trigger; run history & status.
-- F10. Ingestion review queue: low-confidence relevance / dedup / classification decisions surfaced for human approval.
-- F11. Classification evaluation report (accuracy/F1 vs the labelled gold set).
+- F9. Source management (add RSS/HTML sources, selectors, enable/disable).
+- F10. Scrape orchestration: scheduled (cron) **and** manual trigger; run history & status.
+- F11. Ingestion review queue: low-confidence relevance / dedup / classification decisions surfaced for human approval.
+- F12. Classification evaluation report (accuracy/F1 vs the labelled gold set).
 
 ---
 
@@ -118,22 +111,23 @@ Three personas, each needing different things from the same KB:
                        │ Embedding ─▶ vector + entity match ─▶ LLM      │
                        │ "same incident or new?"  ─▶ upsert             │
                        │ Multi-taxonomy classification (LLM)            │
-                       │ Mitigation recommendation (retrieval + LLM)    │
+                       │ Personalization match (embedding vs user       │
+                       │ profile vectors) ─▶ dashboard flag / notify    │
                        └───────────────┬──────────────────────────────┘
                                          ▼
                        ┌──────────────────────────────────────────────┐
                        │   PostgreSQL + pgvector (single source of truth)│
                        │   incidents · reports · entities · rels ·       │
-                       │   classifications · mitigations · embeddings    │
+                       │   classifications · users · profiles · embeddings│
                        └───────────────┬──────────────────────────────┘
                                          ▼
-        ┌────────────────────────┬───────────────────────────┐
-        ▼                        ▼                           ▼
-  Analytics API            Semantic search API          Admin API
-  (aggregations)           (RAG / GraphRAG)             (sources, runs, review)
-        └────────────────────────┴───────────────────────────┘
+        ┌───────────────────┬────────────────────┬───────────────────┐
+        ▼                   ▼                    ▼                   ▼
+  Analytics API      Semantic search API   Auth & personalization   Admin API
+  (aggregations)      (RAG / GraphRAG)      API (F6/F7)         (sources, runs, review)
+        └───────────────────┴────────────────────┴───────────────────┘
                                   ▼
-                       Web frontend (dashboards · explorer · search · admin)
+                       Web frontend (dashboards · explorer · search · signup/profile · admin)
 ```
 
 **Recommended stack** (pick what you know — these are defaults that fit):
@@ -170,24 +164,22 @@ incident_classification(id PK, incident_id FK, namespace,   -- 'MIT','CSET','GMF
        risk_subdomain_id FK NULL, causal_entity, timing, intent,
        confidence, classified_by, classified_at)     -- classified_by: 'llm'|'human'|'aiid'
 
--- Mitigations (the MIT Mitigation DB)
-mitigation_action(id PK, action_id, name, definition, source,
-                  mitigation_code, group_no, embedding vector)
-risk_mitigation_map(risk_subdomain_id FK, mitigation_code, weight)  -- the crosswalk YOU build
-incident_mitigation(incident_id FK, mitigation_action_id FK, relevance_score, rationale)
-
 -- Ingestion / ops
 scrape_source(id PK, name, base_url, type, config_json, enabled)
 scrape_run(id PK, source_id FK, started_at, finished_at, status,
            n_fetched, n_relevant, n_new_incidents, n_new_reports, error)
 review_item(id PK, kind, payload_json, status, decided_by, decided_at) -- human-in-loop queue
 
--- App
-admin_user(id PK, email, password_hash, role)
-saved_search(id PK, user_id FK, query, filters_json, created_at)
+-- App: auth + personalization (F6/F7 — replaces the old mitigation tables)
+app_user(id PK, email UNIQUE, password_hash, role, created_at)   -- role: 'admin'|'user'; one table for admin + registered users
+user_profile(user_id FK→app_user UNIQUE, description_text,
+             embedding vector, updated_at)          -- the free-text system/stakeholder description from signup + its embedding (same model as F3)
+notification(id PK, user_id FK, incident_id FK,
+             similarity_score, channel, sent_at, status)   -- F7, stretch
+saved_search(id PK, user_id FK→app_user, query, filters_json, created_at)
 ```
 
-> **Indexes that matter:** `report(url)` unique (dedup at source), HNSW/IVFFlat vector indexes on `incident.embedding` and `report.embedding`, btree on `incident.incident_date`, and the FK columns.
+> **Indexes that matter:** `report(url)` unique (dedup at source), HNSW/IVFFlat vector indexes on `incident.embedding` and `report.embedding`, btree on `incident.incident_date`, and the FK columns. `user_profile.embedding` doesn't need an ANN index at this scale — matching is one new incident against N users' profiles, a plain linear scan.
 
 ---
 
@@ -204,7 +196,7 @@ Charts must answer a real question, not decorate. Mapping:
 | **Sankey: AI technology → technical failure → harm domain** | "How do failures propagate?" | Developer |
 | **Bar: incidents by sector / autonomy level** (CSET data) | "Which deployment contexts are riskiest?" | Developer |
 | **Force-directed graph: entity relationships** | "How are orgs/products/harms connected?" | Researcher |
-| **Per-incident mitigation panel** | "What should I do about this risk?" | Developer / policy maker |
+| **Personalized incident feed** (F6) | "Which recent incidents are relevant to the system I'm building?" | Developer |
 
 Build 3–4 of these well rather than 10 superficial ones; tag each chart with the persona it serves.
 
@@ -218,29 +210,29 @@ Build 3–4 of these well rather than 10 superficial ones; tag each chart with t
 4. **Structured extraction** — LLM with strict JSON schema produces: title, summary, date, candidate entities (developer/deployer/harmed), and snippets.
 5. **Entity resolution & incident dedup** (see §8.4) — embed → vector + entity match → LLM adjudication → upsert as new incident *or* attach as new report on an existing incident.
 6. **Classification** (see §8.3) — LLM assigns MIT Domain/Subdomain + Causal axes (+ optional CSET/GMF), with confidence.
-7. **Mitigation recommendation** (see §8.5) — retrieve mitigation actions for that subdomain + semantic match → LLM ranks/justifies → store.
-8. **Embed & index** — store embeddings for search.
-9. **Review queue** — anything below confidence thresholds (relevance, dedup, classification) goes to F10 for human approval rather than silently entering the KB.
+7. **Embed & index** — store embeddings for search.
+8. **Personalization match** (see §8.5) — compare the new/updated incident's embedding against every registered user's stored profile vector; above-threshold matches surface it in that user's personalized dashboard (F6) and, if built, queue a notification (F7).
+9. **Review queue** — anything below confidence thresholds (relevance, dedup, classification) goes to F11 for human approval rather than silently entering the KB.
 10. **Available** to dashboards & search immediately on approval.
 
 ---
 
 ## 8. Answers to your open questions
 
-### 8.1 Is the framework / mitigation data actually useful? — **Yes, in two distinct ways.**
+### 8.1 Is the framework data actually useful? — **Yes.**
 - The **classification taxonomies** (MIT/CSET/GMF) give you (a) a labelling target and (b) **ground-truth labels for 1,242+ incidents** — your evaluation set. Without them you'd have no way to prove your classifier works.
-- The **Mitigation Database** is the basis of your *recommendation engine* — the feature that makes AIRiskWatch more than another incident viewer. But note: **it is not linked to incidents in the data.** Creating that incident→mitigation link (§8.5) is your novel contribution and a real scope addition. Use both.
+- The **Mitigation Database** (831 governance/safety actions, not pre-linked to incidents) was originally scoped as the basis for a recommendation engine; **descoped 2026-07-30** — see §8.5 for what replaced it and why.
 
 ### 8.2 How does the scraper know a report is relevant?
 Two-stage filter (cheap → expensive):
 1. **Prefilter (free):** prefer RSS feeds / sections already about AI; keyword & regex gate (model names, "AI", "algorithm", "automated", harm words). Reject obvious non-matches without an LLM call.
-2. **LLM relevance classifier:** for survivors, one structured call returning `{is_ai_incident: bool, confidence: 0–1, reason}`. Definition to give the model: *"a real-world event where a deployed or tested AI/automated system caused or nearly caused harm."* Accept high confidence, send borderline to the review queue (F10). You can validate this gate too — your 7,143 known-relevant reports are positive examples; random general news are negatives.
+2. **LLM relevance classifier:** for survivors, one structured call returning `{is_ai_incident: bool, confidence: 0–1, reason}`. Definition to give the model: *"a real-world event where a deployed or tested AI/automated system caused or nearly caused harm."* Accept high confidence, send borderline to the review queue (F11). You can validate this gate too — your 7,143 known-relevant reports are positive examples; random general news are negatives.
 
 ### 8.3 How to assess classification accuracy? — **You already have a gold set; use it.**
 - Hold out the 1,242 MIT-labelled incidents as ground truth.
 - Run your LLM classifier on their report text (don't show it the label).
 - Compute **accuracy, precision/recall/F1 per risk domain, and a confusion matrix** (macro-F1 matters because domains are imbalanced — 424 vs 19). Also report **top-1 vs top-2 accuracy** (subdomain is a 20+-way classification; top-2 is fair).
-- Iterate the prompt / few-shot examples until the numbers are good; **the eval harness itself (F11) is a presentable deliverable.** Do the same per taxonomy if you add CSET/GMF.
+- Iterate the prompt / few-shot examples until the numbers are good; **the eval harness itself (F12) is a presentable deliverable.** Do the same per taxonomy if you add CSET/GMF.
 
 ### 8.4 Deduplication — new incident vs. new report of an existing one? — **The hard part; here's a concrete recipe.**
 A 3-gate cascade, cheap → expensive:
@@ -249,15 +241,19 @@ A 3-gate cascade, cheap → expensive:
 3. **LLM adjudication:** give the model the new report + each candidate incident's summary; ask `{decision: same|different, matched_incident_id, confidence}`. Definition: *"same incident = same underlying real-world event (same system, same harm, same timeframe), even if reported by a different outlet."*
    - `same` + high conf ⇒ attach as a new report under that incident.
    - `different` + high conf ⇒ create a new incident.
-   - otherwise ⇒ review queue (F10).
+   - otherwise ⇒ review queue (F11).
 
 You can **validate** this too: AIID's `incidents.reports` arrays already tell you which reports belong together — hold some out and measure how often your pipeline re-clusters them correctly.
 
-### 8.5 Selecting the proper mitigation — how, given no direct link in the data?
-Build the link in two layers:
-1. **Static crosswalk (`risk_mitigation_map`):** once, with an LLM (or by hand, reviewing the 23 mitigation subcategories against the 7×subdomain risk taxonomy), map each risk subdomain to the mitigation codes that address it. Small, reusable, reviewable.
-2. **Per-incident ranking:** at ingestion, take the incident's subdomain → candidate mitigation actions from the crosswalk, then **semantic-rank** them against the incident text (embedding similarity) and have the LLM pick the top N with a one-line rationale → `incident_mitigation`.
-- *Accuracy here is harder to "prove"* (no ground truth), so frame it as **relevance**: present rationale + source, and let admins thumbs-up/down in the review queue to build a small human-rated sample you can report on.
+### 8.5 Personalization — how do we match incidents to a user's stated system? (**decision, 2026-07-30**: replaces the mitigation-recommendation design)
+The original plan mapped each incident to recommended mitigation actions from the separate MIT Mitigation Database. That was descoped — not enough payoff for the crosswalk-building effort it required — in favor of a feature users get more direct value from: **personalized relevance**, via user accounts.
+
+1. **Signup captures one free-text profile, not a form.** A registered user (Persona B, developer) describes the AI system they're building and its stakeholders in their own words — the same kind of input F3's search box takes.
+2. **Embed it once, with the same model as F3.** No new embedding infrastructure: the sentence-transformer that powers semantic search also turns the signup description into a `user_profile.embedding` vector, stored once (re-embedded only if the user edits their profile).
+3. **Reuse, don't rebuild, the matching mechanism.** Two consumers share one embedding-similarity computation:
+   - **F6 (dashboard filtering, the reliable version):** on load, rank/filter incidents against the signed-in user's stored profile vector — a plain cosine-similarity query, no new infra.
+   - **F7 (notification, stretch):** at ingestion step 8 (§7), compare each new/updated incident's embedding against *every* user's stored profile vector; above-threshold matches queue a `notification` row. This needs an actual delivery channel (email/in-app) and a background trigger, so it's meaningfully more work than F6 — build F6 first, treat F7 as optional.
+4. **Auth is new backend scope.** Every route today is read-only (`GET`); signup/login are this project's first write-path routes outside the seed importer. Passwords must be hashed (bcrypt/argon2, never stored plain), sessions/tokens need expiry, and `app_user` unifies admin + registered-user login behind a `role` column rather than a second parallel auth system.
 
 ### 8.6 / 8.7 Knowledge graph vs SQL? Is GraphRAG essential? — **Recommendation: Postgres-first, graph as a focused enhancement.**
 Be honest in your report about this trade-off — it shows engineering maturity.
@@ -270,7 +266,7 @@ Be honest in your report about this trade-off — it shows engineering maturity.
 ### 8.8 Scraper trigger: admin panel vs every-24h? — **Both. Cron is the backbone, manual is the override.**
 - **Scheduled cron (~daily)** is the right default — incidents don't break hourly, and it makes "the KB grows automatically" (a proposal promise) true without you touching it.
 - **Add a manual trigger in the admin panel** for demos, testing a newly-added source, and on-demand refresh.
-- Implement them as the *same* job behind two triggers; record every run in `scrape_run` (F9). This is small extra effort and demos far better than either alone.
+- Implement them as the *same* job behind two triggers; record every run in `scrape_run` (F10). This is small extra effort and demos far better than either alone.
 
 ---
 
@@ -280,8 +276,8 @@ Ordering principle: **seed the KB from the AIID data first (de-risks everything)
 
 ### Phase 0 — Foundations & data import  ▸ *de-risks the whole project; do this first*
 - Set up repo, Postgres + pgvector, backend skeleton, CI.
-- Write importers: load `incidents.csv`, `reports.csv`, `entities`/`entity_relationships` (from BSON via `bsondump`/`mongorestore` → export, or parse), all taxonomies, and the Mitigation DB into the schema (§5).
-- **Milestone:** a queryable database of 1,498 incidents, 7,143 reports, entities, and 831 mitigations. You can already write SQL like "incidents per domain per year."
+- Write importers: load `incidents.csv`, `reports.csv`, `entities`/`entity_relationships` (from BSON via `bsondump`/`mongorestore` → export, or parse), and all taxonomies into the schema (§5). (The Mitigation Database is not imported — descoped, §0/§8.5.)
+- **Milestone:** a queryable database of 1,498 incidents, 7,143 reports, and entities. You can already write SQL like "incidents per domain per year."
 
 ### Phase 1 — Read-only API + basic incident explorer
 - REST/GraphQL endpoints: list/detail incidents, reports, entities, classifications.
@@ -290,7 +286,7 @@ Ordering principle: **seed the KB from the AIID data first (de-risks everything)
 
 ### Phase 2 — LLM extraction & classification + **evaluation harness**
 - Structured-output extraction prompt; multi-taxonomy classifier (MIT Domain/Causal first).
-- Build the eval harness (§8.3) on the gold set; iterate prompts to good macro-F1. (F11)
+- Build the eval harness (§8.3) on the gold set; iterate prompts to good macro-F1. (F12)
 - **Milestone:** "we classify incidents with X% accuracy" — a hard, measurable result.
 
 ### Phase 3 — Embeddings + semantic (RAG) search
@@ -302,17 +298,19 @@ Ordering principle: **seed the KB from the AIID data first (de-risks everything)
 - Implement the 3-gate cascade (§8.4); validate against AIID's known report clusters.
 - **Milestone:** "given a new report, we correctly attach-or-create with Y% accuracy."
 
-### Phase 5 — Mitigation recommendation engine
-- Build `risk_mitigation_map` crosswalk; per-incident ranking (§8.5); surface in incident detail (F6).
-- **Milestone:** every incident shows ranked, justified mitigations.
+### Phase 5 — Auth & personalized relevance
+- Build `app_user` signup/login (hashed passwords, sessions); capture the free-text system/stakeholder description and embed it into `user_profile` (§8.5) with the same model as Phase 3's F3 search.
+- Personalized dashboard filtering (F6): rank/filter incidents against the signed-in user's profile vector.
+- **Stretch, only if time remains:** notification delivery (F7) — match new incidents against all stored profiles at ingestion time, send email/in-app alerts above threshold.
+- **Milestone:** a signed-up user sees a dashboard filtered to incidents relevant to the AI system they described.
 
 ### Phase 6 — Persona dashboards
 - Implement the 3–4 priority visualisations (§6) + the entity relationship view (F2, F5).
 - **Milestone:** the analytics story for each persona.
 
 ### Phase 7 — Live ingestion: scraper + scheduling + admin panel
-- Source management (F8), scraper, two-stage relevance gate (§8.2), wire into Phases 2/4/5 pipeline.
-- Cron + manual trigger + run history + review queue (F9, F10).
+- Source management (F9), scraper, two-stage relevance gate (§8.2), wire into Phases 2/4/5 pipeline.
+- Cron + manual trigger + run history + review queue (F10, F11).
 - **Milestone:** the KB grows on its own from real sources; admin can watch and correct it.
 
 ### Phase 8 — *(Advanced, optional)* Knowledge graph + GraphRAG
@@ -320,15 +318,15 @@ Ordering principle: **seed the KB from the AIID data first (de-risks everything)
 - **Milestone:** the differentiator + a research-grade evaluation.
 
 ### Phase 9 — Hardening, write-up, demo
-- Tests, auth, docs, the accuracy/relevance numbers consolidated into your report, demo script.
+- Tests, docs, the accuracy/relevance numbers consolidated into your report, demo script.
 
 ---
 
 ## 10. Suggested first week (concrete starting steps)
 
 1. Stand up Postgres + pgvector locally; create the schema in §5.
-2. Convert the BSON collections you want (`entities`, `entity_relationships`, `taxa`) with `bsondump`/`mongorestore`; you already have the CSVs for incidents/reports/classifications/mitigations.
-3. Write and run the Phase-0 importers; confirm counts (1,498 / 7,143 / 1,242 / 831).
+2. Convert the BSON collections you want (`entities`, `entity_relationships`, `taxa`) with `bsondump`/`mongorestore`; you already have the CSVs for incidents/reports/classifications (the Mitigation Database CSV is not imported — see §0, §8.5).
+3. Write and run the Phase-0 importers; confirm counts (1,498 / 7,143 / 1,242).
 4. Run a few sanity SQL queries (incidents per domain per year) to prove the model.
 5. Pick your backend framework and scaffold the read-only incident endpoint (start of Phase 1).
 

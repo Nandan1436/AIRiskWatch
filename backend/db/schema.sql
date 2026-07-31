@@ -39,7 +39,10 @@ CREATE TABLE mit_classification (
     causal_entity   TEXT,
     timing          TEXT,
     intent          TEXT,
-    published       BOOLEAN
+    published       BOOLEAN,
+    confidence      REAL,          -- LLM self-reported confidence (0-1); NULL for human gold rows
+    classified_by   TEXT,          -- 'human' (seed gold) or 'llm' (Phase 2 backfill)
+    classified_at   TIMESTAMPTZ    -- when an LLM classification was written; NULL for gold rows
 );
 
 CREATE INDEX idx_incident_date ON incident(incident_date);

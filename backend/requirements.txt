@@ -5,3 +5,5 @@ psycopg2-binary
 pandas
 python-dotenv
 pgvector
+httpx
+scikit-learn
