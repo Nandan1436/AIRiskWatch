@@ -9,7 +9,7 @@ CREATE TABLE incident (
     alleged_deployer  TEXT[],
     alleged_developer TEXT[],
     harmed_parties    TEXT[],
-    embedding       VECTOR(1536)
+    embedding       VECTOR(384)     -- multi-qa-MiniLM-L6-cos-v1 (Phase 3 semantic search)
 );
 
 CREATE TABLE report (
@@ -22,7 +22,7 @@ CREATE TABLE report (
     authors         TEXT,
     published_date  DATE,
     language        TEXT,
-    embedding       VECTOR(1536)
+    embedding       VECTOR(384)     -- multi-qa-MiniLM-L6-cos-v1 (Phase 3 semantic search)
 );
 
 CREATE TABLE incident_report (
@@ -33,13 +33,16 @@ CREATE TABLE incident_report (
 
 CREATE TABLE mit_classification (
     id              SERIAL PRIMARY KEY,
-    incident_id     INTEGER NOT NULL REFERENCES incident(incident_id),
+    incident_id     INTEGER NOT NULL UNIQUE REFERENCES incident(incident_id),
     risk_domain     TEXT,
     risk_subdomain  TEXT,
     causal_entity   TEXT,
     timing          TEXT,
     intent          TEXT,
-    published       BOOLEAN
+    published       BOOLEAN,
+    confidence      REAL,          -- LLM self-reported confidence (0-1); NULL for human gold rows
+    classified_by   TEXT,          -- 'human' (seed gold) or 'llm' (Phase 2 backfill)
+    classified_at   TIMESTAMPTZ    -- when an LLM classification was written; NULL for gold rows
 );
 
 CREATE INDEX idx_incident_date ON incident(incident_date);

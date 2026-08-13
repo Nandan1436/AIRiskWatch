@@ -9,3 +9,6 @@ class MitClassificationResponse(BaseModel):
     causal_entity: str | None
     timing: str | None
     intent: str | None
+    # Provenance (Phase 2): lets the frontend badge LLM vs human classifications.
+    confidence: float | None = None
+    classified_by: str | None = None

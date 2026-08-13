@@ -1,10 +1,11 @@
+import { Link, useLocation } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import styles from "./Sidebar.module.css";
 
 const NAV_ITEMS = [
   {
     label: "Incidents",
-    active: true,
+    to: "/incidents",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -14,8 +15,18 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: "Search",
+    to: "/search",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+    ),
+  },
+  {
     label: "Risk domains",
-    active: false,
+    to: null,
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 3v18h18" />
@@ -27,7 +38,7 @@ const NAV_ITEMS = [
   },
   {
     label: "Source reports",
-    active: false,
+    to: null,
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -41,6 +52,7 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
 
   return (
     <aside className={styles.aside}>
@@ -59,16 +71,31 @@ export function Sidebar() {
       </div>
 
       <nav className={styles.nav}>
-        {NAV_ITEMS.map((item) => (
-          <div
-            key={item.label}
-            className={item.active ? styles.navItemActive : styles.navItem}
-            title={item.active ? undefined : "Coming soon"}
-          >
-            {item.icon}
-            {item.label}
-          </div>
-        ))}
+        {NAV_ITEMS.map((item) =>
+          item.to ? (
+            <Link
+              key={item.label}
+              to={item.to}
+              className={
+                location.pathname.startsWith(item.to)
+                  ? styles.navItemActive
+                  : styles.navItem
+              }
+            >
+              {item.icon}
+              {item.label}
+            </Link>
+          ) : (
+            <div
+              key={item.label}
+              className={styles.navItem}
+              title="Coming soon"
+            >
+              {item.icon}
+              {item.label}
+            </div>
+          ),
+        )}
       </nav>
 
       <div className={styles.appearance}>

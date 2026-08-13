@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, ForeignKey, Integer, Text
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,5 +19,9 @@ class MitClassification(Base):
     timing: Mapped[str | None] = mapped_column(Text)
     intent: Mapped[str | None] = mapped_column(Text)
     published: Mapped[bool | None] = mapped_column(Boolean)
+    # Provenance (Phase 2): distinguishes human gold rows from LLM backfill.
+    confidence: Mapped[float | None] = mapped_column(Float)
+    classified_by: Mapped[str | None] = mapped_column(Text)
+    classified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     incident = relationship("Incident", back_populates="classifications")
