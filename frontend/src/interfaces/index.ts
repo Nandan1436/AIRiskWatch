@@ -4,4 +4,5 @@ export * from "./incident";
 export * from "./organization";
 export * from "./report";
 export * from "./riskDomain";
+export * from "./search";
 export * from "./summary";

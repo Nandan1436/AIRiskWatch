@@ -1,10 +1,11 @@
 from datetime import date
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import Date, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.models.incident_model import incident_report_table
+from app.models.incident_model import EMBEDDING_DIM, incident_report_table
 
 
 class Report(Base):
@@ -19,6 +20,7 @@ class Report(Base):
     authors: Mapped[str | None] = mapped_column(Text)
     published_date: Mapped[date | None] = mapped_column(Date)
     language: Mapped[str | None] = mapped_column(Text)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
 
     incidents = relationship(
         "Incident",

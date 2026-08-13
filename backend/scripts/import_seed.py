@@ -150,6 +150,7 @@ def insert_mit_classifications(cur, df):
         INSERT INTO mit_classification (incident_id, risk_domain, risk_subdomain,
                                          causal_entity, timing, intent, published)
         VALUES %s
+        ON CONFLICT (incident_id) DO NOTHING
         """,
         rows,
     )
