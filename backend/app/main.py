@@ -19,6 +19,20 @@ from app.routes.summary_route import router as summary_router
 
 logger = logging.getLogger(__name__)
 
+# Uvicorn configures only its own loggers, so app-level logger.info() calls are
+# dropped by the root logger's default WARNING level. That would silently hide
+# the ingestion pipeline's audit trail — robots.txt decisions, summary
+# fallbacks, per-article outcomes — which only has value if it's actually
+# visible. Attach a handler only if nothing else has (never under pytest or the
+# CLI scripts, which configure their own).
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
+    )
+# httpx logs every request at INFO, which drowns the pipeline's own lines.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 def _run_scheduled_ingestion() -> None:
     """Scheduler job entry point.

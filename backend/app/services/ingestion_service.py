@@ -509,23 +509,23 @@ def extract_report_fields(
 # Stage 4 — Incident resolution (embedding only, no LLM call)
 # --------------------------------------------------------------------------
 def resolve_incident(
-    db: Session, title: str, body_text: str
+    db: Session, title: str, description: str
 ) -> tuple[int | None, float]:
-    """Best-matching existing incident for this article, if any.
+    """Best-matching existing incident, if any, for a normalized incident record.
+
+    Takes an incident-shaped title + description (not raw article prose) and
+    embeds it exactly the way stored incidents were embedded, via
+    ``incident_embedding_input``. That symmetry is the point: the same real-world
+    event covered by two outlets yields two very different articles but two
+    nearly identical incident records, so matching in normalized space is what
+    makes the threshold meaningful.
 
     Uses the same distance convention as ``SearchService.retrieve``
-    (``cosine_distance``, reported as ``1 - distance``) so that a threshold
+    (``cosine_distance``, reported as ``1 - distance``) so a similarity value
     means the same thing in ingestion as it does in search.
-
-    The body text is trimmed to roughly description length before embedding.
-    Existing ``incident.embedding`` vectors were built from title + description
-    (a few sentences), so comparing them against a whole article body would
-    stretch the query vector over far more topics than the stored ones cover and
-    depress every similarity — the threshold would no longer mean what it means
-    in search.
     """
     query_text = incident_embedding_input(
-        title, _truncate(body_text, _RESOLUTION_TEXT_CHAR_LIMIT)
+        title, _truncate(description, _RESOLUTION_TEXT_CHAR_LIMIT)
     )
     if not query_text.strip():
         return None, 0.0
@@ -734,8 +734,18 @@ def process_article(
         logger.info("skip: url=%s inserted_concurrently", entry.url)
         return
 
+    # Normalize the article into incident form BEFORE resolving. Stored
+    # ``incident.embedding`` vectors are built from an incident's title +
+    # description, so comparing raw article prose against them is
+    # apples-to-oranges and loses real matches: two outlets covering one
+    # incident write very different articles, but the normalized records they
+    # produce are nearly identical. Costs one LLM call on the attach path that
+    # a resolve-first ordering would save, which is the price of the dedup
+    # actually working.
+    incident_fields = extract_incident_fields(client, entry, body_text)
+
     incident_id, similarity = resolve_incident(
-        db, fields.title or (entry.title or ""), body_text
+        db, incident_fields.title, incident_fields.description
     )
     if incident_id is not None:
         attach_to_incident(db, entry, fields, body_text, incident_id)
@@ -749,7 +759,6 @@ def process_article(
         )
         return
 
-    incident_fields = extract_incident_fields(client, entry, body_text)
     create_incident(
         db, client, entry, fields, body_text, incident_fields, summary
     )
