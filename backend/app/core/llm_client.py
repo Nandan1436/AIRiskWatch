@@ -235,14 +235,34 @@ def _to_gemini_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return _strip_unsupported(schema)
 
 
+_UNSUPPORTED_KEYWORDS = {"additionalProperties", "$schema", "title"}
+
+
 def _strip_unsupported(node: Any) -> Any:
-    unsupported = {"additionalProperties", "$schema", "title"}
+    """Remove keywords Gemini rejects, treating them as keywords only where they
+    actually are ones.
+
+    The values under ``properties`` are user-chosen FIELD NAMES, not schema
+    keywords — a schema with a field literally called ``title`` must keep it.
+    Stripping blindly would delete the field while leaving it listed in
+    ``required``, which Gemini rejects with "required[0]: property is not
+    defined".
+    """
     if isinstance(node, dict):
-        return {
-            k: _strip_unsupported(v)
-            for k, v in node.items()
-            if k not in unsupported
-        }
+        result: dict[str, Any] = {}
+        for key, value in node.items():
+            if key in _UNSUPPORTED_KEYWORDS:
+                continue
+            if key == "properties" and isinstance(value, dict):
+                # Recurse into each field's schema, but never filter the field
+                # names themselves.
+                result[key] = {
+                    field: _strip_unsupported(field_schema)
+                    for field, field_schema in value.items()
+                }
+            else:
+                result[key] = _strip_unsupported(value)
+        return result
     if isinstance(node, list):
         return [_strip_unsupported(v) for v in node]
     return node
