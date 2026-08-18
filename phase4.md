@@ -1,5 +1,9 @@
 # News-scraping ingestion pipeline (Phase 4+7 merged, per Aug-1 decisions)
 
+> **Status: implemented** on branch `feat-create-scraping-module`.
+> See "Implementation notes" at the end for the four things that changed once
+> this met real feeds.
+
 ## Context
 
 Spec order (`AIRiskWatch_Spec_And_Plan.md` §9) puts Phase 4 (dedup) before Phase 7
@@ -322,3 +326,75 @@ Explorer/Search UI automatically since nothing about their shape is new.
 9. Toggle `INGESTION_ENABLED=true`, restart the server (single worker), confirm
    the scheduler starts with the configured timezone (log line) and shuts down
    cleanly on Ctrl-C.
+
+## Implementation notes
+
+Built as planned — no new tables, no migration, `db/schema.sql` untouched. Four
+things only became visible once the pipeline ran against real feeds and a real
+LLM, and all four changed the code rather than the plan.
+
+**1. Stage ordering was wrong for dedup.** The plan had Stage 4 (resolution)
+before Stage 5 (incident extraction), resolving on the article's own headline
+and body. But stored `incident.embedding` vectors are built from an incident's
+LLM-written title + description, so that comparison is asymmetric — raw
+journalism against normalized records. It ingested the same Flock
+license-plate-reader incident twice from two MIT Technology Review articles.
+Measured on that pair: **0.8244** raw (below threshold → duplicate created) vs
+**0.8986** normalized (matches). Next-best candidates were 0.5374 and 0.4917, so
+`0.85` sits in a wide gap and looks like a reasonable default after all. Fixed by
+extracting incident fields *first*, then resolving in normalized space — which
+costs one LLM call on the attach path the planned ordering would have saved.
+Branch A verified afterwards at 0.9104 similarity, attaching with no duplicate.
+
+**2. A latent bug in `llm_client.py` blocked Stage 3 entirely.**
+`_strip_unsupported` recursed blindly and deleted any key named `title`,
+including a *property* named `title` — while leaving it in `required`. Gemini
+rejected the request (`required[0]: property is not defined`). Phase 2's schemas
+have no `title` field, so this had never fired. Fixed there rather than worked
+around here, and confirmed the Phase 2 classification schema is unchanged.
+
+**3. The audit logging was invisible under uvicorn.** Uvicorn configures only
+its own loggers, so the root logger stayed at `WARNING` and every robots.txt
+decision and summary-fallback line was dropped — logging that only has value if
+someone can actually read it. `app/main.py` now configures logging when nothing
+else has, and quiets `httpx`'s per-request INFO chatter.
+
+**4. One planned feed URL was wrong, and `lxml_html_clean` was missing.**
+The Verge's AI feed is `/rss/ai-artificial-intelligence/index.xml` (the planned
+path had the segments transposed and returned 0 entries). `--check-feeds` exists
+precisely to catch that, and did. Separately, `trafilatura` fails to import
+without `lxml_html_clean`, because its `justext` dependency still imports
+`lxml.html.clean` after that moved into its own package — now pinned in
+`requirements.txt`.
+
+### Relevance filter — the prompt, and how strict it turned out
+
+The gate is the part that most needed real-world tuning, because an AI-category
+feed is overwhelmingly funding rounds and product launches, and a model asked
+"is this about AI?" says yes to nearly all of it. What the prompt does:
+
+- Requires **all three** of a deployed system, a harm that already occurred, and
+  identifiable affected parties.
+- **Enumerates** the exclusions rather than trusting judgment: funding,
+  acquisitions, launches (including AI-*safety* product launches), benchmarks,
+  human-carried security exploits against AI products, red-team demos,
+  retrospectives about earlier incidents, op-eds, policy proposals, explainers.
+- Demands the model **name** the harm and the system, and grounds both in the
+  supplied text — an earlier version conflated systems across adjacent feed
+  entries, reporting an `ai_system` that belonged to a different article.
+- Returns a confidence that is thresholded (`INGESTION_RELEVANCE_MIN_CONFIDENCE`,
+  default `0.6`); a hedged yes, or a yes that can't name harm + system, is
+  treated as a no. A false positive corrupts the corpus; a false negative just
+  misses one article.
+
+Observed on live feeds: **1/20** accepted on TechCrunch, **1/20** on Ars
+Technica, **0/10** on The Verge. The accepted items were genuine incidents (Grok
+used to generate explicit imagery from a child's photo; a credential leak via
+LiteLLM). Correct borderline rejections included "Amazon is destroying rare books
+to train AI" (a training-data practice, no deployed harm to identifiable
+parties) and a Copilot jailbreak found by researchers in testing.
+
+The known cost of "discard on no": rejected articles aren't persisted, so each
+run re-screens them — a second run over the same feed spent 19 relevance calls
+to accept nothing. Correct, but not free; a URL-level seen-cache would fix it
+without a table if that ever matters.
