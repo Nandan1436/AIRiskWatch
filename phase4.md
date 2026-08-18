@@ -367,6 +367,35 @@ without `lxml_html_clean`, because its `justext` dependency still imports
 `lxml.html.clean` after that moved into its own package — now pinned in
 `requirements.txt`.
 
+### The advisory lock needed a dedicated connection
+
+The plan said "wrap the cycle in a Postgres advisory lock" and treated that as
+settled. It isn't, on a pooled `Session`: `pg_advisory_lock` belongs to one
+Postgres backend, but a SQLAlchemy `Session` returns its connection to the pool
+on every `commit()` — and this cycle commits per article. If anything else
+checks out a connection in that gap, the Session continues on a *different*
+backend and the lock is stranded on an idle pooled one.
+
+Both consequences were silent. Mutual exclusion disappears — which removes the
+only thing making `MAX(id)+1` safe — and the orphaned lock can never be
+released, so every later cycle returns `status='skipped'` until the process
+restarts. Reproduced on the unmodified pool config: lock taken on pid 266, one
+concurrent checkout after a commit, cycle continues on pid 267, next cycle
+blocked. The gap here is wide (an HTTP fetch, a 2s politeness delay and several
+LLM calls sit between commits), so on a live server this is likely rather than
+theoretical.
+
+Now the cycle checks out one connection for its whole duration and binds a
+`Session` to it, so the lock, every commit and the release share one backend.
+`_try_advisory_lock`/`_release_advisory_lock` take a `Connection` rather than a
+`Session` so this can't regress quietly, and a `False` unlock result is logged
+as an error instead of discarded. Verified under continuous connection churn.
+
+Worth noting for anyone tuning this later: the `MAX(id)+1` scheme is now
+correct but it is load-bearing on that locking being right. Real sequences
+would remove the coupling entirely — the only reason they were dropped is the
+no-migration constraint.
+
 ### Relevance filter — the prompt, and how strict it turned out
 
 The gate is the part that most needed real-world tuning, because an AI-category
