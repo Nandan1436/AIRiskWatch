@@ -824,8 +824,12 @@ def run_ingestion_cycle(
             except Exception as exc:
                 # Any source-level failure (bad feed URL, robots denial, non-2xx,
                 # malformed XML) is recorded and skipped; the remaining sources
-                # still run.
-                summary.record_error(f"{source.name}: {exc}")
+                # still run. FeedFetchError already names the source, so don't
+                # prefix it twice.
+                message = str(exc)
+                if not message.startswith(f"{source.name}:"):
+                    message = f"{source.name}: {message}"
+                summary.record_error(message)
                 continue
 
             summary.sources_processed += 1
