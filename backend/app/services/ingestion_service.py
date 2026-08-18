@@ -43,10 +43,7 @@ from app.core.llm_client import LlmClient, LlmClientError, create_llm_client
 from app.core.news_sources import NEWS_SOURCES, NewsSource
 from app.models.incident_model import Incident, incident_report_table
 from app.models.report_model import Report
-from app.services.llm_classification_service import (
-    ClassificationError,
-    LlmClassificationService,
-)
+from app.services.llm_classification_service import LlmClassificationService
 
 logger = logging.getLogger(__name__)
 
@@ -386,8 +383,20 @@ def _next_id(db: Session, column) -> int:
 # --------------------------------------------------------------------------
 # Stage 1 — Discover
 # --------------------------------------------------------------------------
-def discover_articles(db: Session, source: NewsSource) -> list[feed_client.FeedEntry]:
-    """New articles from one feed, oldest-known URLs filtered out.
+def discover_articles(
+    db: Session,
+    source: NewsSource,
+    seen_urls: set[str] | None = None,
+) -> list[feed_client.FeedEntry]:
+    """New articles from one feed, already-known URLs filtered out.
+
+    ``seen_urls`` is the cycle-wide set of URLs already claimed by this run.
+    It matters because feeds overlap: a syndicated wire story, or two feeds that
+    redirect to one canonical URL, can present the same article from different
+    sources within a single cycle. Without a cycle-scoped set, the DB check alone
+    would miss it — the first copy may not be committed yet when the second is
+    discovered — and ``report.url`` deliberately carries no UNIQUE constraint to
+    catch it either. Callers that don't pass one get per-source behaviour only.
 
     Raises ``FeedFetchError`` on a feed-level problem so the caller can record a
     source failure and continue with the remaining sources.
@@ -395,16 +404,18 @@ def discover_articles(db: Session, source: NewsSource) -> list[feed_client.FeedE
     raw = feed_client.fetch_feed(source)
     entries = feed_client.parse_feed_entries(raw, source)
 
+    if seen_urls is None:
+        seen_urls = set()
+
     fresh: list[feed_client.FeedEntry] = []
-    seen_in_batch: set[str] = set()
     for entry in entries:
         if len(fresh) >= config.INGESTION_MAX_ARTICLES_PER_SOURCE:
             break
-        if entry.url in seen_in_batch:
+        if entry.url in seen_urls:
             continue
         if _report_url_exists(db, entry.url):
             continue
-        seen_in_batch.add(entry.url)
+        seen_urls.add(entry.url)
         fresh.append(entry)
 
     logger.info(
@@ -678,13 +689,27 @@ def create_incident(
 
     # LLM call #4 — reuses the Phase 2 service as-is rather than duplicating
     # taxonomy logic. Deliberately outside the transaction above.
+    #
+    # Catches BaseException-minus-the-unrecoverable rather than just the two
+    # expected error types: the incident and report are already committed at this
+    # point, so anything escaping here would be attributed to the article by the
+    # caller's handler — counting a stored incident as a failed one and rolling
+    # back a transaction that no longer contains it. A missing classification is
+    # recoverable (scripts/run_classification.py backfills it); a miscounted run
+    # and a bogus rollback are not.
     try:
         service = LlmClassificationService(db, client)
         result = service.classify_incident(incident_id)
         service.save_llm_classification(incident_id, result)
-    except (ClassificationError, LlmClientError) as exc:
+    except KeyboardInterrupt:
+        raise
+    except Exception as exc:
+        # save_llm_classification commits, so a failure there may leave the
+        # session dirty; clear it before the caller reuses this session.
+        db.rollback()
         summary.record_error(
-            f"incident {incident_id} created but not classified: {exc}"
+            f"incident {incident_id} created but not classified: "
+            f"{type(exc).__name__}: {exc}"
         )
 
     return incident_id
@@ -774,20 +799,41 @@ def process_article(
 # --------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------
-def _try_advisory_lock(db: Session) -> bool:
+def _try_advisory_lock(connection) -> bool:
+    """Take the pipeline's advisory lock on a specific connection.
+
+    Takes a ``Connection``, not a ``Session``, on purpose. ``pg_advisory_lock``
+    belongs to one Postgres backend, and a Session does not pin one: after a
+    ``commit()`` it returns its connection to the pool, and if anything else
+    checks out in that window the Session continues on a *different* backend.
+    The lock would then be stranded on an idle pooled connection — silently
+    ending mutual exclusion (which is what makes ``MAX(id) + 1`` safe) and
+    leaving a lock nothing can release, so every later cycle reports
+    ``skipped`` until the process restarts.
+    """
     return bool(
-        db.execute(
+        connection.execute(
             sql_text("SELECT pg_try_advisory_lock(:key)"), {"key": _ADVISORY_LOCK_KEY}
         ).scalar()
     )
 
 
-def _release_advisory_lock(db: Session) -> None:
+def _release_advisory_lock(connection) -> None:
+    """Release the lock on the same connection that took it.
+
+    A ``False`` result means we did not own the lock — the bug this signature
+    exists to prevent — so it is logged as an error rather than ignored.
+    """
     try:
-        db.execute(
+        released = connection.execute(
             sql_text("SELECT pg_advisory_unlock(:key)"), {"key": _ADVISORY_LOCK_KEY}
-        )
-        db.commit()
+        ).scalar()
+        if not released:
+            logger.error(
+                "advisory lock %s was not held by this connection at release; "
+                "it may be stranded on another pooled connection",
+                _ADVISORY_LOCK_KEY,
+            )
     except Exception as exc:  # pragma: no cover - best-effort release
         logger.warning("failed to release advisory lock: %s", exc)
 
@@ -802,23 +848,58 @@ def run_ingestion_cycle(
     Serialized by a Postgres advisory lock: a second concurrent call returns
     immediately with ``status='skipped'`` rather than blocking or racing. That
     lock also protects ``MAX(id) + 1`` allocation, so it is not optional.
+
+    The cycle runs on a connection checked out for its whole duration, with a
+    Session bound to that connection, so the lock, every commit, and the release
+    all happen on one Postgres backend. The caller's ``db`` session is used only
+    to reach the engine — it is deliberately not the session the work runs on
+    (see ``_try_advisory_lock`` for why).
     """
     summary = IngestionRunSummary()
+    engine = db.get_bind()
 
-    if not _try_advisory_lock(db):
-        summary.status = "skipped"
-        logger.info("ingestion: lock held elsewhere, skipping this cycle")
-        return summary
+    with engine.connect() as connection:
+        if not _try_advisory_lock(connection):
+            summary.status = "skipped"
+            logger.info("ingestion: lock held elsewhere, skipping this cycle")
+            return summary
+        try:
+            with Session(bind=connection) as work_db:
+                return _run_locked_cycle(work_db, client, sources, summary)
+        finally:
+            _release_advisory_lock(connection)
+
+
+def _run_locked_cycle(
+    db: Session,
+    client: LlmClient | None,
+    sources: tuple[NewsSource, ...],
+    summary: IngestionRunSummary,
+) -> IngestionRunSummary:
+    """The cycle body, with the advisory lock already held for its duration."""
 
     started = datetime.now(timezone.utc)
     owns_client = client is None
     try:
+        # Only client CONSTRUCTION is fatal to the cycle (a missing API key means
+        # no article can be processed). Per-call LLM errors are wrapped into
+        # IngestionError by each stage and handled per-article below, so one API
+        # hiccup never discards the remaining sources.
         if client is None:
-            client = create_llm_client()
+            try:
+                client = create_llm_client()
+            except LlmClientError as exc:
+                summary.status = "failed"
+                summary.record_error(f"LLM client unavailable: {exc}")
+                sources = ()  # nothing can be processed; fall through to cleanup
+
+        # URLs claimed anywhere in this cycle, so overlapping feeds can't each
+        # ingest the same article (see discover_articles).
+        seen_urls: set[str] = set()
 
         for source in sources:
             try:
-                entries = discover_articles(db, source)
+                entries = discover_articles(db, source, seen_urls)
             except KeyboardInterrupt:
                 raise
             except Exception as exc:
@@ -844,18 +925,24 @@ def run_ingestion_cycle(
                     summary.articles_failed += 1
                     summary.record_error(f"{source.name} {entry.url}: {exc}")
 
-    except LlmClientError as exc:
-        summary.status = "failed"
-        summary.record_error(f"LLM client unavailable: {exc}")
     except KeyboardInterrupt:
         summary.status = "failed"
         summary.record_error("interrupted")
+    except Exception as exc:
+        # Nothing should reach here — source and article failures are both
+        # handled above — but a cycle that dies for an unforeseen reason must
+        # still report it and release the lock rather than raise into a
+        # scheduler job or HTTP handler.
+        summary.status = "failed"
+        summary.record_error(f"cycle aborted: {type(exc).__name__}: {exc}")
+        logger.exception("ingestion cycle aborted")
     finally:
+        # The advisory lock is released by run_ingestion_cycle, which owns the
+        # connection it was taken on.
         if owns_client and client is not None:
             close = getattr(client, "close", None)
             if callable(close):
                 close()
-        _release_advisory_lock(db)
 
     summary.finalize()
     elapsed = (datetime.now(timezone.utc) - started).total_seconds()
