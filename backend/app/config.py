@@ -6,6 +6,8 @@ load_dotenv()
 
 
 def _build_database_url() -> str:
+    # A full connection string is used for hosted PostgreSQL providers such as
+    # Neon. Otherwise retain the local Docker-friendly POSTGRES_* fallback.
     explicit_url = os.environ.get("DATABASE_URL")
     if explicit_url:
         return explicit_url
