@@ -40,9 +40,6 @@ export function SearchResultCard({ result }: { result: SearchResultItem }) {
           </span>
         )}
       </div>
-      <span className="font-mono text-[11px] tabular-nums text-fg-faint">
-        {Math.round(result.similarity * 100)}% match
-      </span>
     </Link>
   );
 }
