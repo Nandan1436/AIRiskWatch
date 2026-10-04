@@ -6,11 +6,7 @@ pandas
 python-dotenv
 pgvector
 httpx
+beautifulsoup4
 scikit-learn
 sentence-transformers
-feedparser
 apscheduler
-trafilatura
-# justext (a trafilatura dependency) still imports lxml.html.clean, which moved
-# out of lxml into its own package — without this, trafilatura fails to import.
-lxml_html_clean

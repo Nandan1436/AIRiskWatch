@@ -1,35 +1,9 @@
-"""News ingestion pipeline (Phase 4+7 merged, per the Aug-1 design decisions).
-
-Five stages per article, one function each so they can be exercised
-independently, plus ``run_ingestion_cycle`` to orchestrate them:
-
-  1. Discover      feed fetch + parse, skip URLs already in ``report``
-  2. Relevance     LLM call #1 — is this actually an AI incident?
-  3. Report        article fetch + body extraction + LLM call #2 (prose fields)
-  4. Resolution    embedding cosine match against existing incidents (no LLM)
-  5a. Attach       matched: link the report to that incident
-  5b. Create       unmatched: LLM call #3 (incident fields) + #4 (classification)
-
-Adds no tables and no migration: everything lands in the existing ``incident`` /
-``report`` / ``incident_report`` / ``mit_classification`` tables. Run outcomes
-are returned as an in-memory summary and logged, never persisted.
-
-Two invariants worth stating up front, because both are easy to quietly break:
-
-- **The advisory lock is load-bearing.** New ``report_number`` / ``incident_id``
-  values are allocated with ``MAX(...) + 1`` rather than a sequence, so the lock
-  is what prevents two cycles from picking the same id. Removing it requires
-  moving id allocation back to real sequences first.
-- **The LLM never supplies provenance.** ``url`` and ``source_domain`` come from
-  the feed entry; the model is asked only for prose. A model that hallucinated a
-  plausible-looking source would otherwise poison attribution silently.
-"""
 from __future__ import annotations
 
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -37,7 +11,7 @@ from sqlalchemy import func, insert, select, text as sql_text
 from sqlalchemy.orm import Session
 
 from app import config
-from app.core import feed_client
+from app.core import news_client
 from app.core.embedding_client import embed_text, incident_embedding_input
 from app.core.llm_client import LlmClient, LlmClientError, create_llm_client
 from app.core.news_sources import NEWS_SOURCES, NewsSource
@@ -47,41 +21,22 @@ from app.services.llm_classification_service import LlmClassificationService
 
 logger = logging.getLogger(__name__)
 
-# Arbitrary but fixed: the key identifying this pipeline's advisory lock. Any
-# other advisory-lock user in this database must not reuse it.
 _ADVISORY_LOCK_KEY = 8_401_207
 
-# Budget for the text handed to the LLM. The stored text is NOT truncated (see
-# report.text); this only bounds prompt cost.
 _PROMPT_TEXT_CHAR_LIMIT = 6000
-_SUMMARY_PROMPT_CHAR_LIMIT = 1200
-# Body-text budget when building the dedup query vector. Kept near the
-# description budget the Phase 2 classifier uses (2500), so the query vector is
-# comparable in scope to the stored title+description vectors.
-_RESOLUTION_TEXT_CHAR_LIMIT = 2500
+_RELEVANCE_EXCERPT_CHAR_LIMIT = 2000
 
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"[ \t\r\f\v]+")
 
 
 class IngestionError(RuntimeError):
-    """A failure that aborts one article or one source, never the whole cycle."""
+    pass
 
 
-# --------------------------------------------------------------------------
-# Run summary — returned and logged, never stored
-# --------------------------------------------------------------------------
 @dataclass
 class IngestionRunSummary:
-    """Outcome of one ingestion cycle.
-
-    ``articles_failed`` is tracked separately from
-    ``articles_seen - articles_relevant`` because those two are very different
-    outcomes: "89 irrelevant, 1 failed" and "40 irrelevant, 50 failed" would
-    otherwise be indistinguishable.
-    """
-
-    status: str = "running"  # running | completed | partial | failed | skipped
+    status: str = "running"
     sources_processed: int = 0
     articles_seen: int = 0
     articles_relevant: int = 0
@@ -101,13 +56,7 @@ class IngestionRunSummary:
         return self
 
 
-# --------------------------------------------------------------------------
-# Validated LLM outputs
-# --------------------------------------------------------------------------
 class RelevanceVerdict(BaseModel):
-    """Stage 2 output — the gate that keeps AI *news* out of an AI *incident*
-    corpus."""
-
     is_incident: bool
     harm_type: str = ""
     ai_system: str = ""
@@ -115,10 +64,6 @@ class RelevanceVerdict(BaseModel):
     reason: str = ""
 
     def accepted(self, min_confidence: float) -> bool:
-        """A yes counts only if the model is confident AND can name both the
-        harm and the system. A hedged or unspecific yes is treated as a no:
-        a false positive pollutes the corpus, a false negative just means we
-        miss one article that the next run may pick up anyway."""
         if not self.is_incident:
             return False
         if self.confidence < min_confidence:
@@ -127,9 +72,6 @@ class RelevanceVerdict(BaseModel):
 
 
 class ReportFields(BaseModel):
-    """Stage 3 output — prose only. Provenance fields are deliberately absent
-    from this model so they cannot be sourced from the LLM at all."""
-
     title: str = ""
     authors: str = ""
     language: str = "en"
@@ -145,8 +87,6 @@ class ReportFields(BaseModel):
 
 
 class IncidentFields(BaseModel):
-    """Stage 5b output — the fields needed to open a new incident."""
-
     title: str
     description: str
     incident_date: date | None = None
@@ -178,15 +118,6 @@ class IncidentFields(BaseModel):
         return [str(item).strip() for item in v if str(item).strip()]
 
 
-# --------------------------------------------------------------------------
-# Prompts
-# --------------------------------------------------------------------------
-# The central problem this prompt solves: an AI-category feed is mostly funding
-# rounds, product launches, and benchmark results. A model asked "is this about
-# AI?" says yes to nearly all of it. So the definition is narrow, the exclusions
-# are explicit and enumerated, and the model must name a concrete harm and a
-# concrete deployed system — requirements that are hard to satisfy for an
-# article that isn't actually about an incident.
 _RELEVANCE_SYSTEM = (
     "You screen news articles for an AI incident database. Your job is to "
     "decide whether an article reports a REAL AI INCIDENT that has already "
@@ -237,7 +168,7 @@ _RELEVANCE_SYSTEM = (
     "Empty string if false.\n"
     "- confidence: 0 to 1, how confident you are in is_incident.\n"
     "- reason: one sentence justifying the decision, quoting the specific words "
-    "from the headline or summary that establish the harm.\n\n"
+    "from the headline or text that establish the harm.\n\n"
     "Reply with ONLY a JSON object with keys: is_incident, harm_type, "
     "ai_system, confidence, reason."
 )
@@ -333,12 +264,7 @@ _INCIDENT_SCHEMA: dict[str, Any] = {
 }
 
 
-# --------------------------------------------------------------------------
-# Helpers
-# --------------------------------------------------------------------------
 def strip_html(value: str | None) -> str:
-    """Flatten an HTML fragment to plain text. RSS summaries routinely carry
-    markup, and storing it would leak into every consumer of ``report.text``."""
     if not value:
         return ""
     without_tags = _TAG_RE.sub(" ", value)
@@ -359,97 +285,85 @@ def _truncate(value: str, limit: int) -> str:
     return value if len(value) <= limit else value[:limit].rstrip() + "…"
 
 
-def _entry_published_date(entry: feed_client.FeedEntry) -> date | None:
-    parsed = entry.published_date
-    if parsed is None:
-        return None
-    try:
-        return date(parsed.tm_year, parsed.tm_mon, parsed.tm_mday)
-    except (AttributeError, ValueError):
-        return None
+def _entry_published_date(entry: news_client.NewsArticle) -> date | None:
+    return entry.published_date.date() if entry.published_date else None
 
 
 def _next_id(db: Session, column) -> int:
-    """Allocate the next public id for ``column`` as ``MAX + 1``.
-
-    Safe only because the whole cycle holds the advisory lock — see the module
-    docstring. Sequences were deliberately not introduced (no migration), so
-    this is the tradeoff that buys that.
-    """
+    # MAX + 1 is only safe because run_ingestion_cycle holds the advisory lock.
     current = db.scalar(select(func.coalesce(func.max(column), 0)))
     return int(current or 0) + 1
 
 
-# --------------------------------------------------------------------------
-# Stage 1 — Discover
-# --------------------------------------------------------------------------
 def discover_articles(
     db: Session,
     source: NewsSource,
     seen_urls: set[str] | None = None,
-) -> list[feed_client.FeedEntry]:
-    """New articles from one feed, already-known URLs filtered out.
-
-    ``seen_urls`` is the cycle-wide set of URLs already claimed by this run.
-    It matters because feeds overlap: a syndicated wire story, or two feeds that
-    redirect to one canonical URL, can present the same article from different
-    sources within a single cycle. Without a cycle-scoped set, the DB check alone
-    would miss it — the first copy may not be committed yet when the second is
-    discovered — and ``report.url`` deliberately carries no UNIQUE constraint to
-    catch it either. Callers that don't pass one get per-source behaviour only.
-
-    Raises ``FeedFetchError`` on a feed-level problem so the caller can record a
-    source failure and continue with the remaining sources.
-    """
-    raw = feed_client.fetch_feed(source)
-    entries = feed_client.parse_feed_entries(raw, source)
+) -> list[news_client.NewsArticle]:
+    listing = news_client.fetch_listing(source)
+    urls = news_client.parse_listing(listing, source)
+    if not urls:
+        raise news_client.SourceFetchError(
+            f"{source.name}: no article links found on {source.listing_url}"
+        )
 
     if seen_urls is None:
         seen_urls = set()
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=config.INGESTION_LOOKBACK_HOURS)
 
-    fresh: list[feed_client.FeedEntry] = []
-    for entry in entries:
-        if len(fresh) >= config.INGESTION_MAX_ARTICLES_PER_SOURCE:
+    fresh: list[news_client.NewsArticle] = []
+    fetched = stale = 0
+    for url in urls:
+        if fetched >= config.INGESTION_MAX_ARTICLES_PER_SOURCE:
             break
-        if entry.url in seen_urls:
+        # Check the database before fetching: known URLs cost no request or LLM call.
+        if url in seen_urls or _report_url_exists(db, url):
             continue
-        if _report_url_exists(db, entry.url):
+        seen_urls.add(url)
+
+        fetched += 1
+        html = news_client.fetch_article(url)
+        if html is None:
             continue
-        seen_urls.add(entry.url)
+        entry = news_client.parse_article(html, url, source)
+        if entry is None:
+            continue
+        if entry.published_date is None:
+            # Provenance comes from the page, never the LLM: no date, no ingest.
+            logger.info("discover: url=%s skipped=no_published_date", url)
+            continue
+        if entry.published_date < cutoff:
+            stale += 1
+            if source.newest_first:
+                break
+            continue
         fresh.append(entry)
 
     logger.info(
-        "discover: source=%s entries=%d new=%d",
+        "discover: source=%s links=%d fetched=%d stale=%d new=%d",
         source.name,
-        len(entries),
+        len(urls),
+        fetched,
+        stale,
         len(fresh),
     )
     return fresh
 
 
 def _report_url_exists(db: Session, url: str) -> bool:
-    """Idempotency check. ``report.url`` cannot carry a UNIQUE constraint — the
-    seeded AIID corpus already contains duplicate URLs — so this
-    application-level check is what makes re-running a cycle a no-op."""
+    # report.url can't be UNIQUE (the seed corpus has duplicates); this is the idempotency check.
     return (
         db.scalar(select(Report.id).where(Report.url == url).limit(1)) is not None
     )
 
 
-# --------------------------------------------------------------------------
-# Stage 2 — Relevance filter (LLM call #1)
-# --------------------------------------------------------------------------
-def filter_relevance(client: LlmClient, entry: feed_client.FeedEntry) -> RelevanceVerdict:
-    """Screen one article on its feed metadata alone.
-
-    Runs before any article-page fetch, so an irrelevant article costs one small
-    LLM call and no HTTP request.
-    """
-    summary = _truncate(strip_html(entry.summary), _SUMMARY_PROMPT_CHAR_LIMIT)
+def filter_relevance(client: LlmClient, entry: news_client.NewsArticle) -> RelevanceVerdict:
+    excerpt = _truncate(entry.body or strip_html(entry.summary), _RELEVANCE_EXCERPT_CHAR_LIMIT)
     user = (
         f"Source: {entry.source_name}\n"
         f"Headline: {entry.title or '(none)'}\n"
-        f"Summary: {summary or '(none)'}\n\n"
+        f"Standfirst: {entry.summary or '(none)'}\n"
+        f"Article text (opening):\n{excerpt or '(none)'}\n\n"
         "Decide whether this reports a real AI incident. Answer:"
     )
     try:
@@ -463,38 +377,9 @@ def filter_relevance(client: LlmClient, entry: feed_client.FeedEntry) -> Relevan
         raise IngestionError(f"relevance response invalid: {exc}") from exc
 
 
-# --------------------------------------------------------------------------
-# Stage 3 — Report extraction (article fetch + LLM call #2)
-# --------------------------------------------------------------------------
-def fetch_body_text(entry: feed_client.FeedEntry) -> tuple[str, bool]:
-    """The article's body text, and whether we had to fall back to the summary.
-
-    Full body text is stored by requirement. When the page can't be fetched or
-    parsed, the feed summary stands in — degraded, logged, but still a usable
-    report rather than a lost one.
-    """
-    html = feed_client.fetch_article(entry.url)
-    if html is not None:
-        extracted = feed_client.extract_article_text(html, url=entry.url)
-        if extracted:
-            return extracted, False
-
-    logger.info(
-        "extract: source=%s url=%s fallback=summary",
-        entry.source_name,
-        entry.url,
-    )
-    return strip_html(entry.summary), True
-
-
 def extract_report_fields(
-    client: LlmClient, entry: feed_client.FeedEntry, body_text: str
+    client: LlmClient, entry: news_client.NewsArticle, body_text: str
 ) -> ReportFields:
-    """Prose metadata for the report row.
-
-    Note what is NOT requested: ``url`` and ``source_domain``. Those come from
-    the feed entry, so no model output can misattribute a report.
-    """
     user = (
         f"Headline as published: {entry.title or '(none)'}\n\n"
         f"Article text:\n{_truncate(body_text, _PROMPT_TEXT_CHAR_LIMIT)}\n\n"
@@ -510,36 +395,17 @@ def extract_report_fields(
     except ValidationError as exc:
         raise IngestionError(f"report response invalid: {exc}") from exc
 
-    # The feed's own headline is the fallback — never leave a report untitled.
     if not fields.title.strip():
         fields.title = entry.title or entry.url
     return fields
 
 
-# --------------------------------------------------------------------------
-# Stage 4 — Incident resolution (embedding only, no LLM call)
-# --------------------------------------------------------------------------
 def resolve_incident(
     db: Session, title: str, description: str
-) -> tuple[int | None, float]:
-    """Best-matching existing incident, if any, for a normalized incident record.
-
-    Takes an incident-shaped title + description (not raw article prose) and
-    embeds it exactly the way stored incidents were embedded, via
-    ``incident_embedding_input``. That symmetry is the point: the same real-world
-    event covered by two outlets yields two very different articles but two
-    nearly identical incident records, so matching in normalized space is what
-    makes the threshold meaningful.
-
-    Uses the same distance convention as ``SearchService.retrieve``
-    (``cosine_distance``, reported as ``1 - distance``) so a similarity value
-    means the same thing in ingestion as it does in search.
-    """
-    query_text = incident_embedding_input(
-        title, _truncate(description, _RESOLUTION_TEXT_CHAR_LIMIT)
-    )
+) -> tuple[int | None, float, list[float] | None]:
+    query_text = incident_embedding_input(title, description)
     if not query_text.strip():
-        return None, 0.0
+        return None, 0.0, None
 
     query_vector = embed_text(query_text)
     distance = Incident.embedding.cosine_distance(query_vector)
@@ -550,35 +416,28 @@ def resolve_incident(
         .limit(1)
     ).first()
     if row is None:
-        return None, 0.0
+        return None, 0.0, query_vector
 
     incident_id, dist = row
     similarity = 1.0 - float(dist)
     if similarity >= config.INGESTION_SIMILARITY_THRESHOLD:
-        return int(incident_id), similarity
-    return None, similarity
+        return int(incident_id), similarity, query_vector
+    return None, similarity, query_vector
 
 
-# --------------------------------------------------------------------------
-# Stage 5 — persistence
-# --------------------------------------------------------------------------
 def _insert_report(
     db: Session,
-    entry: feed_client.FeedEntry,
+    entry: news_client.NewsArticle,
     fields: ReportFields,
     body_text: str,
 ) -> int:
-    """Insert the report row and return its ``report_number``.
-
-    ``url`` and ``source_domain`` come from the feed entry — the trust boundary.
-    ``text`` holds the full body, untruncated.
-    """
     report_number = _next_id(db, Report.report_number)
     db.add(
         Report(
             report_number=report_number,
             title=fields.title or entry.title,
             text=body_text,
+            # Provenance comes from the feed entry, never from the LLM.
             url=entry.url,
             source_domain=entry.source_domain,
             authors=fields.authors or None,
@@ -600,12 +459,11 @@ def _link_report(db: Session, incident_id: int, report_number: int) -> None:
 
 def attach_to_incident(
     db: Session,
-    entry: feed_client.FeedEntry,
+    entry: news_client.NewsArticle,
     fields: ReportFields,
     body_text: str,
     incident_id: int,
 ) -> None:
-    """Branch A — the article corroborates an incident already in the corpus."""
     report_number = _insert_report(db, entry, fields, body_text)
     _link_report(db, incident_id, report_number)
     db.commit()
@@ -618,9 +476,8 @@ def attach_to_incident(
 
 
 def extract_incident_fields(
-    client: LlmClient, entry: feed_client.FeedEntry, body_text: str
+    client: LlmClient, entry: news_client.NewsArticle, body_text: str
 ) -> IncidentFields:
-    """LLM call #3 — the structured incident record for a new incident."""
     user = (
         f"Article headline: {entry.title or '(none)'}\n"
         f"Published: {_entry_published_date(entry) or 'unknown'}\n\n"
@@ -645,23 +502,14 @@ def extract_incident_fields(
 def create_incident(
     db: Session,
     client: LlmClient,
-    entry: feed_client.FeedEntry,
+    entry: news_client.NewsArticle,
     fields: ReportFields,
     body_text: str,
     incident_fields: IncidentFields,
+    embedding: list[float] | None,
     summary: IngestionRunSummary,
 ) -> int:
-    """Branch B — open a new incident, then classify it.
-
-    The incident and report are committed BEFORE classification is attempted, so
-    a classification failure cannot roll them back. An unclassified incident is
-    recoverable (``scripts/run_classification.py`` backfills it); a lost one is
-    not.
-    """
     incident_id = _next_id(db, Incident.incident_id)
-    embedding_input = incident_embedding_input(
-        incident_fields.title, incident_fields.description
-    )
     db.add(
         Incident(
             incident_id=incident_id,
@@ -672,7 +520,7 @@ def create_incident(
             alleged_deployer=incident_fields.alleged_deployer or None,
             alleged_developer=incident_fields.alleged_developer or None,
             harmed_parties=incident_fields.harmed_parties or None,
-            embedding=embed_text(embedding_input) if embedding_input else None,
+            embedding=embedding,
         )
     )
     db.flush()
@@ -687,16 +535,7 @@ def create_incident(
         report_number,
     )
 
-    # LLM call #4 — reuses the Phase 2 service as-is rather than duplicating
-    # taxonomy logic. Deliberately outside the transaction above.
-    #
-    # Catches BaseException-minus-the-unrecoverable rather than just the two
-    # expected error types: the incident and report are already committed at this
-    # point, so anything escaping here would be attributed to the article by the
-    # caller's handler — counting a stored incident as a failed one and rolling
-    # back a transaction that no longer contains it. A missing classification is
-    # recoverable (scripts/run_classification.py backfills it); a miscounted run
-    # and a bogus rollback are not.
+    # Classified after the commit, so a classification failure never loses the incident.
     try:
         service = LlmClassificationService(db, client)
         result = service.classify_incident(incident_id)
@@ -704,8 +543,6 @@ def create_incident(
     except KeyboardInterrupt:
         raise
     except Exception as exc:
-        # save_llm_classification commits, so a failure there may leave the
-        # session dirty; clear it before the caller reuses this session.
         db.rollback()
         summary.record_error(
             f"incident {incident_id} created but not classified: "
@@ -715,17 +552,12 @@ def create_incident(
     return incident_id
 
 
-# --------------------------------------------------------------------------
-# Per-article pipeline
-# --------------------------------------------------------------------------
 def process_article(
     db: Session,
     client: LlmClient,
-    entry: feed_client.FeedEntry,
+    entry: news_client.NewsArticle,
     summary: IngestionRunSummary,
 ) -> None:
-    """Stages 2-5 for one article. Raises ``IngestionError`` on failure; the
-    caller counts it and moves to the next article."""
     verdict = filter_relevance(client, entry)
     if not verdict.accepted(config.INGESTION_RELEVANCE_MIN_CONFIDENCE):
         logger.info(
@@ -746,88 +578,62 @@ def process_article(
         verdict.confidence,
     )
 
-    body_text, used_fallback = fetch_body_text(entry)
+    # Discovery already fetched and parsed the page; the body is in hand.
+    body_text = entry.body or ""
     if not body_text.strip():
         raise IngestionError(f"no usable text for {entry.url}")
 
     fields = extract_report_fields(client, entry, body_text)
 
-    # Re-check for the URL: the relevance + extraction calls take time, and a
-    # concurrent CLI run could have inserted it. Cheap insurance against a
-    # duplicate report.
     if _report_url_exists(db, entry.url):
         logger.info("skip: url=%s inserted_concurrently", entry.url)
         return
 
-    # Normalize the article into incident form BEFORE resolving. Stored
-    # ``incident.embedding`` vectors are built from an incident's title +
-    # description, so comparing raw article prose against them is
-    # apples-to-oranges and loses real matches: two outlets covering one
-    # incident write very different articles, but the normalized records they
-    # produce are nearly identical. Costs one LLM call on the attach path that
-    # a resolve-first ordering would save, which is the price of the dedup
-    # actually working.
     incident_fields = extract_incident_fields(client, entry, body_text)
 
-    incident_id, similarity = resolve_incident(
+    incident_id, similarity, embedding = resolve_incident(
         db, incident_fields.title, incident_fields.description
     )
     if incident_id is not None:
         attach_to_incident(db, entry, fields, body_text, incident_id)
         summary.reports_attached += 1
         logger.info(
-            "resolve: url=%s matched incident_id=%d similarity=%.4f%s",
+            "resolve: url=%s matched incident_id=%d similarity=%.4f",
             entry.url,
             incident_id,
             similarity,
-            " (summary fallback)" if used_fallback else "",
         )
         return
 
     create_incident(
-        db, client, entry, fields, body_text, incident_fields, summary
+        db, client, entry, fields, body_text, incident_fields, embedding, summary
     )
     summary.incidents_created += 1
     logger.info(
-        "resolve: url=%s no match (best similarity=%.4f) -> new incident%s",
+        "resolve: url=%s no match (best similarity=%.4f) -> new incident",
         entry.url,
         similarity,
-        " (summary fallback)" if used_fallback else "",
     )
 
 
-# --------------------------------------------------------------------------
-# Orchestration
-# --------------------------------------------------------------------------
 def _try_advisory_lock(connection) -> bool:
-    """Take the pipeline's advisory lock on a specific connection.
-
-    Takes a ``Connection``, not a ``Session``, on purpose. ``pg_advisory_lock``
-    belongs to one Postgres backend, and a Session does not pin one: after a
-    ``commit()`` it returns its connection to the pool, and if anything else
-    checks out in that window the Session continues on a *different* backend.
-    The lock would then be stranded on an idle pooled connection — silently
-    ending mutual exclusion (which is what makes ``MAX(id) + 1`` safe) and
-    leaving a lock nothing can release, so every later cycle reports
-    ``skipped`` until the process restarts.
-    """
-    return bool(
+    acquired = bool(
         connection.execute(
             sql_text("SELECT pg_try_advisory_lock(:key)"), {"key": _ADVISORY_LOCK_KEY}
         ).scalar()
     )
+    # End the autobegun transaction: a Session bound to a connection that is already
+    # in a transaction joins it and never commits it, so every write would roll back.
+    connection.commit()
+    return acquired
 
 
 def _release_advisory_lock(connection) -> None:
-    """Release the lock on the same connection that took it.
-
-    A ``False`` result means we did not own the lock — the bug this signature
-    exists to prevent — so it is logged as an error rather than ignored.
-    """
     try:
         released = connection.execute(
             sql_text("SELECT pg_advisory_unlock(:key)"), {"key": _ADVISORY_LOCK_KEY}
         ).scalar()
+        connection.commit()
         if not released:
             logger.error(
                 "advisory lock %s was not held by this connection at release; "
@@ -843,21 +649,11 @@ def run_ingestion_cycle(
     client: LlmClient | None = None,
     sources: tuple[NewsSource, ...] = NEWS_SOURCES,
 ) -> IngestionRunSummary:
-    """Run one full ingestion cycle over ``sources``.
-
-    Serialized by a Postgres advisory lock: a second concurrent call returns
-    immediately with ``status='skipped'`` rather than blocking or racing. That
-    lock also protects ``MAX(id) + 1`` allocation, so it is not optional.
-
-    The cycle runs on a connection checked out for its whole duration, with a
-    Session bound to that connection, so the lock, every commit, and the release
-    all happen on one Postgres backend. The caller's ``db`` session is used only
-    to reach the engine — it is deliberately not the session the work runs on
-    (see ``_try_advisory_lock`` for why).
-    """
     summary = IngestionRunSummary()
     engine = db.get_bind()
 
+    # Advisory locks belong to one backend connection, so the lock, all work, and the
+    # release share this connection rather than the caller's session.
     with engine.connect() as connection:
         if not _try_advisory_lock(connection):
             summary.status = "skipped"
@@ -876,25 +672,17 @@ def _run_locked_cycle(
     sources: tuple[NewsSource, ...],
     summary: IngestionRunSummary,
 ) -> IngestionRunSummary:
-    """The cycle body, with the advisory lock already held for its duration."""
-
     started = datetime.now(timezone.utc)
     owns_client = client is None
     try:
-        # Only client CONSTRUCTION is fatal to the cycle (a missing API key means
-        # no article can be processed). Per-call LLM errors are wrapped into
-        # IngestionError by each stage and handled per-article below, so one API
-        # hiccup never discards the remaining sources.
         if client is None:
             try:
                 client = create_llm_client()
             except LlmClientError as exc:
                 summary.status = "failed"
                 summary.record_error(f"LLM client unavailable: {exc}")
-                sources = ()  # nothing can be processed; fall through to cleanup
+                sources = ()
 
-        # URLs claimed anywhere in this cycle, so overlapping feeds can't each
-        # ingest the same article (see discover_articles).
         seen_urls: set[str] = set()
 
         for source in sources:
@@ -903,10 +691,6 @@ def _run_locked_cycle(
             except KeyboardInterrupt:
                 raise
             except Exception as exc:
-                # Any source-level failure (bad feed URL, robots denial, non-2xx,
-                # malformed XML) is recorded and skipped; the remaining sources
-                # still run. FeedFetchError already names the source, so don't
-                # prefix it twice.
                 message = str(exc)
                 if not message.startswith(f"{source.name}:"):
                     message = f"{source.name}: {message}"
@@ -929,16 +713,10 @@ def _run_locked_cycle(
         summary.status = "failed"
         summary.record_error("interrupted")
     except Exception as exc:
-        # Nothing should reach here — source and article failures are both
-        # handled above — but a cycle that dies for an unforeseen reason must
-        # still report it and release the lock rather than raise into a
-        # scheduler job or HTTP handler.
         summary.status = "failed"
         summary.record_error(f"cycle aborted: {type(exc).__name__}: {exc}")
         logger.exception("ingestion cycle aborted")
     finally:
-        # The advisory lock is released by run_ingestion_cycle, which owns the
-        # connection it was taken on.
         if owns_client and client is not None:
             close = getattr(client, "close", None)
             if callable(close):
@@ -962,8 +740,6 @@ def _run_locked_cycle(
 
 
 class IngestionService:
-    """Thin wrapper so routes can inject this like the other services."""
-
     def __init__(self, db: Session):
         self.db = db
 

@@ -1,16 +1,3 @@
-"""News ingestion CLI — spends LLM quota (except in --check-feeds mode).
-
-Runs the same ``run_ingestion_cycle`` the scheduler and the API endpoint use, so
-behaviour is identical however it is triggered. Independent of
-``INGESTION_ENABLED``, which only gates the in-process scheduler — this script
-always runs when invoked, making it the way to use OS-level cron instead.
-
-Run from backend/:
-    python scripts/run_ingestion.py --check-feeds     # no LLM calls, no writes
-    python scripts/run_ingestion.py --dry-run         # relevance only, no writes
-    python scripts/run_ingestion.py                   # full cycle
-    python scripts/run_ingestion.py --source techcrunch
-"""
 from __future__ import annotations
 
 import argparse
@@ -18,11 +5,10 @@ import logging
 import os
 import sys
 
-# Make `app` importable when run as `python scripts/run_ingestion.py`.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app import config  # noqa: E402
-from app.core import feed_client  # noqa: E402
+from app.core import news_client  # noqa: E402
 from app.core.llm_client import create_llm_client  # noqa: E402
 from app.core.news_sources import NEWS_SOURCES  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
@@ -46,44 +32,41 @@ def select_sources(pattern: str | None):
     return matched
 
 
-def check_feeds(sources) -> int:
-    """Fetch and parse each feed, reporting entry counts. No LLM, no DB writes.
-
-    This is the cheap way to catch a stale feed URL — outlets change them, and a
-    wrong URL should be found here rather than mid-run.
-    """
+def check_sources(sources) -> int:
     failures = 0
     for source in sources:
         try:
-            raw = feed_client.fetch_feed(source)
-            entries = feed_client.parse_feed_entries(raw, source)
+            listing = news_client.fetch_listing(source)
+            urls = news_client.parse_listing(listing, source)
         except Exception as exc:
             failures += 1
             print(f"  FAIL  {source.name}: {exc}")
             continue
 
-        if not entries:
+        if not urls:
             failures += 1
-            print(f"  EMPTY {source.name}: parsed 0 entries from {source.feed_url}")
+            print(f"  EMPTY {source.name}: 0 article links on {source.listing_url}")
             continue
 
-        newest = entries[0]
-        print(f"  OK    {source.name}: {len(entries)} entries")
-        print(f"          newest: {(newest.title or '(untitled)')[:90]}")
-        print(f"          domain: {newest.source_domain}")
+        # Parse the first article too, so a changed article layout shows up here.
+        html = news_client.fetch_article(urls[0])
+        entry = news_client.parse_article(html, urls[0], source) if html else None
+        if entry is None:
+            failures += 1
+            print(f"  FAIL  {source.name}: could not parse {urls[0]}")
+            continue
+
+        published = entry.published_date.isoformat() if entry.published_date else "MISSING"
+        print(f"  OK    {source.name}: {len(urls)} article links")
+        print(f"          first: {(entry.title or '(untitled)')[:90]}")
+        print(f"          published: {published}  body: {len(entry.body or '')} chars")
 
     print()
-    print(f"{len(sources) - failures}/{len(sources)} feeds healthy")
+    print(f"{len(sources) - failures}/{len(sources)} sources healthy")
     return 1 if failures else 0
 
 
 def dry_run(sources) -> int:
-    """Run discovery + the relevance filter only, printing verdicts.
-
-    Spends one small LLM call per new article but writes nothing — useful for
-    seeing how strict the filter actually is against a live feed before letting
-    it create incidents.
-    """
     db = SessionLocal()
     client = create_llm_client()
     accepted = rejected = failed = 0
@@ -152,11 +135,11 @@ def full_run(sources) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description="Run the news ingestion pipeline.")
     parser.add_argument(
-        "--check-feeds",
+        "--check-sources",
         action="store_true",
-        help="Fetch/parse each feed and report entry counts. No LLM, no writes.",
+        help="Fetch each listing page and parse one article. No LLM, no writes.",
     )
     parser.add_argument(
         "--dry-run",
@@ -179,9 +162,9 @@ def main() -> int:
 
     sources = select_sources(args.source)
 
-    if args.check_feeds:
-        print(f"Checking {len(sources)} feed(s) as {config.INGESTION_USER_AGENT}\n")
-        return check_feeds(sources)
+    if args.check_sources:
+        print(f"Checking {len(sources)} source(s) as {config.INGESTION_USER_AGENT}\n")
+        return check_sources(sources)
     if args.dry_run:
         return dry_run(sources)
     return full_run(sources)
