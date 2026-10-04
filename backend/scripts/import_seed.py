@@ -1,9 +1,3 @@
-"""Seed importer — MIT taxonomy scope only.
-
-Loads incidents.csv, reports.csv, and classifications_MIT.csv from SEED_DATA_DIR
-into the incident / report / incident_report / mit_classification tables.
-CSET and GMF classifications are out of scope for this pass.
-"""
 import json
 import os
 import re

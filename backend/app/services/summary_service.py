@@ -42,9 +42,6 @@ class SummaryService:
         )
 
     def _total_organizations(self) -> int:
-        # AIID seed data uses "unknown" / "unknown-<category>" as a
-        # placeholder when the actor was never identified - exclude those
-        # so the count reflects only real, named organizations.
         deployer_names = select(func.unnest(Incident.alleged_deployer).label("org")).where(
             Incident.alleged_deployer.is_not(None)
         )
@@ -72,9 +69,6 @@ class SummaryService:
         ).all()
         counts = {int(row_year): count for row_year, count in rows}
 
-        # The current calendar year is still in progress, so comparing it
-        # against a full prior year would read as a misleading drop -
-        # compare the last two *complete* years instead.
         current_year = date.today().year
         complete_years = sorted(y for y in counts if y < current_year)
         if not complete_years:

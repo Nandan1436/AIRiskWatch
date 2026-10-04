@@ -1,18 +1,3 @@
-"""Phase 2 evaluation harness — offline, free, no API calls.
-
-Scores a predictions JSONL (from run_classification.py --mode eval) against the
-human gold labels in the database. Re-runnable as often as you like, so you can
-iterate the prompt on a fixed dev slice and only quote headline numbers from a
-final full run.
-
-Run from backend/:
-    python scripts/evaluate_classifier.py --run-name dev
-
-Writes into eval_results/<run-name>/:
-    metrics.json             machine-readable metrics
-    report.md                paste-ready tables for the SPL report
-    subdomain_confusion.csv  gold-vs-predicted subdomain counts
-"""
 from __future__ import annotations
 
 import argparse
@@ -21,7 +6,6 @@ import json
 import os
 import sys
 
-# Make `app` importable when run as `python scripts/evaluate_classifier.py`.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from sklearn.metrics import (  # noqa: E402
@@ -37,7 +21,6 @@ from app.models.mit_classification_model import MitClassification  # noqa: E402
 RESULTS_ROOT = os.path.join(os.path.dirname(__file__), "..", "eval_results")
 
 
-# --- canonicalization (robust to the &amp; vs & seed quirk) ----------------
 def _canon(value: str | None, options: list[str]) -> str | None:
     if value is None:
         return None
@@ -48,7 +31,6 @@ def _canon(value: str | None, options: list[str]) -> str | None:
     return tax.normalize(value)
 
 
-# --- data loading ----------------------------------------------------------
 def load_predictions(path: str) -> dict[int, dict]:
     preds: dict[int, dict] = {}
     with open(path, encoding="utf-8") as f:
@@ -78,7 +60,7 @@ def load_gold(db, incident_ids: list[int]) -> dict[int, dict]:
     ).all()
     gold: dict[int, dict] = {}
     for incident_id, domain, sub, entity, timing, intent in rows:
-        if incident_id in gold:  # one gold row per incident
+        if incident_id in gold:
             continue
         gold[incident_id] = {
             "risk_domain": _canon(domain, tax.DOMAINS),
@@ -90,7 +72,6 @@ def load_gold(db, incident_ids: list[int]) -> dict[int, dict]:
     return gold
 
 
-# --- metrics ---------------------------------------------------------------
 def _accuracy(pairs: list[tuple]) -> float:
     if not pairs:
         return 0.0
@@ -108,7 +89,6 @@ def compute_metrics(preds: dict[int, dict], gold: dict[int, dict]) -> dict:
         _canon(preds[i].get("risk_subdomain_second"), tax.SUBDOMAINS) for i in ids
     ]
 
-    # Domain accuracy + per-domain P/R/F1/support.
     domain_acc = _accuracy(list(zip(y_true_domain, y_pred_domain)))
     p, r, f1, support = precision_recall_fscore_support(
         y_true_domain, y_pred_domain, labels=tax.DOMAINS, zero_division=0
@@ -124,7 +104,6 @@ def compute_metrics(preds: dict[int, dict], gold: dict[int, dict]) -> dict:
     }
     macro_f1_domain = float(sum(f1) / len(f1)) if len(f1) else 0.0
 
-    # Subdomain macro-F1 + top-1 / top-2 accuracy.
     _, _, f1_sub, _ = precision_recall_fscore_support(
         y_true_sub, y_pred_sub, labels=tax.SUBDOMAINS, zero_division=0
     )
@@ -137,7 +116,6 @@ def compute_metrics(preds: dict[int, dict], gold: dict[int, dict]) -> dict:
         else 0.0
     )
 
-    # Per-axis accuracy.
     axis_acc = {
         axis: _accuracy(
             [
@@ -152,10 +130,8 @@ def compute_metrics(preds: dict[int, dict], gold: dict[int, dict]) -> dict:
         )
     }
 
-    # Domain confusion matrix (rows = gold, cols = predicted), in DOMAINS order.
     cm = confusion_matrix(y_true_domain, y_pred_domain, labels=tax.DOMAINS).tolist()
 
-    # Calibration: mean confidence when domain correct vs incorrect.
     conf_correct = [
         preds[i].get("confidence")
         for i in ids
@@ -171,7 +147,6 @@ def compute_metrics(preds: dict[int, dict], gold: dict[int, dict]) -> dict:
     mean_conf_correct = sum(conf_correct) / len(conf_correct) if conf_correct else None
     mean_conf_wrong = sum(conf_wrong) / len(conf_wrong) if conf_wrong else None
 
-    # Subdomain confusion (gold -> predicted counts), for the CSV.
     sub_conf: dict[str, dict[str, int]] = {
         g: {p: 0 for p in tax.SUBDOMAINS} for g in tax.SUBDOMAINS
     }
@@ -200,7 +175,6 @@ def compute_metrics(preds: dict[int, dict], gold: dict[int, dict]) -> dict:
     }
 
 
-# --- rendering -------------------------------------------------------------
 def _pct(x: float | None) -> str:
     return "n/a" if x is None else f"{x * 100:.1f}%"
 
@@ -259,7 +233,6 @@ def write_subdomain_confusion_csv(path: str, sub_conf: dict[str, dict[str, int]]
             writer.writerow([gold_sub] + [sub_conf[gold_sub][p] for p in tax.SUBDOMAINS])
 
 
-# --- main ------------------------------------------------------------------
 def main() -> None:
     parser = argparse.ArgumentParser(description="Phase 2 offline evaluation harness")
     parser.add_argument("--run-name", required=True, help="subdir under eval_results/")

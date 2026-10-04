@@ -1,14 +1,3 @@
-"""Phase 3 embedding backfill — populates incident.embedding for semantic search.
-
-Embeds title+description for every incident with a NULL embedding, batched
-through the local sentence-transformer (app/core/embedding_client.py). No LLM
-calls, no API key, no rate limit — safe to (re)run any time; already-embedded
-incidents are skipped, so a Ctrl-C loses no completed work.
-
-Run from backend/:
-    python scripts/backfill_embeddings.py
-    python scripts/backfill_embeddings.py --batch-size 64 --limit 200
-"""
 from __future__ import annotations
 
 import argparse
