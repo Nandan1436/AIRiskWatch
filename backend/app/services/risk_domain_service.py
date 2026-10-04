@@ -28,8 +28,6 @@ class RiskDomainService:
             )
         ).all()
 
-        # Counted separately because summing subdomain counts would
-        # double-count incidents classified under multiple subdomains.
         domain_counts = dict(
             self.db.execute(
                 select(

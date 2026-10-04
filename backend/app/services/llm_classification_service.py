@@ -1,11 +1,3 @@
-"""LLM MIT-taxonomy classification service (Phase 2).
-
-``classify_incident`` is pure prediction — it reads an incident + its linked
-reports, prompts the LLM, and returns a validated result WITHOUT writing to the
-database. ``save_llm_classification`` is the only method that writes, and only in
-backfill mode. This separation is what lets the eval run over the gold set
-without ever touching the seeded data.
-"""
 from __future__ import annotations
 
 import json
@@ -21,24 +13,17 @@ from app.core.llm_client import LlmClient
 from app.models.incident_model import Incident
 from app.models.mit_classification_model import MitClassification
 
-# Per-report text budget when building the model input (~1.5k chars ≈ ~400 tok).
 _REPORT_CHAR_LIMIT = 1500
 _MAX_REPORTS = 2
-# Target incident description budget; keeps title+description+2 reports ~1.2-2k
-# tokens (per the plan). Few-shot exemplars use a tighter budget so the 7
-# examples together don't blow the prompt past ~5k tokens.
 _DESCRIPTION_CHAR_LIMIT = 2500
 _FEWSHOT_DESCRIPTION_CHAR_LIMIT = 700
 
 
 class ClassificationError(RuntimeError):
-    """Raised when an incident cannot be classified into a valid result."""
+    pass
 
 
 def _snap(value: Any, options: list[str]) -> Any:
-    """Snap a model-returned string to its canonical taxonomy spelling
-    (case/entity-insensitive). Leaves unknown values untouched so the validators
-    below reject them."""
     if not isinstance(value, str):
         return value
     target = tax.normalize(value).casefold()
@@ -49,10 +34,6 @@ def _snap(value: Any, options: list[str]) -> Any:
 
 
 class LlmClassification(BaseModel):
-    """Validated LLM output. Only the taxonomy/axis fields + confidence are
-    persisted; ``risk_subdomain_second`` and ``justification`` live in the
-    predictions JSONL (top-2 accuracy, error analysis)."""
-
     risk_domain: str
     risk_subdomain: str
     risk_subdomain_second: str | None = None
@@ -97,8 +78,6 @@ class LlmClassification(BaseModel):
                 f"risk_subdomain '{self.risk_subdomain}' does not belong to "
                 f"domain '{self.risk_domain}'"
             )
-        # A second guess that isn't a valid subdomain of the domain (or repeats
-        # the first) is dropped rather than failing the whole classification.
         if self.risk_subdomain_second is not None:
             same = tax.normalize(self.risk_subdomain_second) == tax.normalize(
                 self.risk_subdomain
@@ -111,7 +90,6 @@ class LlmClassification(BaseModel):
 
     @classmethod
     def from_raw(cls, raw: dict[str, Any]) -> "LlmClassification":
-        """Snap strings to canonical spelling, then validate."""
         data = dict(raw)
         data["risk_domain"] = _snap(data.get("risk_domain"), tax.DOMAINS)
         data["risk_subdomain"] = _snap(data.get("risk_subdomain"), tax.SUBDOMAINS)
@@ -126,8 +104,6 @@ class LlmClassification(BaseModel):
 
 
 def build_response_schema() -> dict[str, Any]:
-    """JSON schema handed to the LLM (Gemini enforces it natively; OpenAI-compat
-    providers get it via the prompt + Pydantic validation)."""
     order = [
         "risk_domain",
         "risk_subdomain",
@@ -170,7 +146,6 @@ class LlmClassificationService:
         self._system = self._build_system_prompt()
         self._few_shot = self._build_few_shot_block()
 
-    # -- prompt construction ------------------------------------------------
     @staticmethod
     def _build_system_prompt() -> str:
         return (
@@ -253,7 +228,6 @@ class LlmClassificationService:
             "Answer:"
         )
 
-    # -- data access --------------------------------------------------------
     def _load_incidents(self, incident_ids: list[int]) -> list[Incident]:
         if not incident_ids:
             return []
@@ -272,7 +246,6 @@ class LlmClassificationService:
             .options(selectinload(Incident.reports))
         )
 
-    # -- prediction (no DB write) ------------------------------------------
     def classify_incident(self, incident_id: int) -> LlmClassification:
         incident = self._load_incident(incident_id)
         if incident is None:
@@ -283,7 +256,6 @@ class LlmClassificationService:
         try:
             return LlmClassification.from_raw(raw)
         except ValidationError as first_error:
-            # One semantic-repair retry, echoing the validation error back.
             repair_user = (
                 f"{user}\n\n"
                 f"Your previous answer was invalid: {first_error}. "
@@ -299,7 +271,6 @@ class LlmClassificationService:
                     f"incident {incident_id}: invalid after repair: {second_error}"
                 ) from second_error
 
-    # -- persistence (backfill only) ---------------------------------------
     def has_llm_classification(self, incident_id: int) -> bool:
         return (
             self.db.scalar(
@@ -314,8 +285,6 @@ class LlmClassificationService:
     def save_llm_classification(
         self, incident_id: int, result: LlmClassification
     ) -> bool:
-        """Insert an LLM classification row. Idempotent: returns False (no-op) if
-        an LLM row already exists for this incident."""
         if self.has_llm_classification(incident_id):
             return False
         row = MitClassification(

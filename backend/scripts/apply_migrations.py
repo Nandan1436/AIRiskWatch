@@ -1,10 +1,3 @@
-"""Apply SQL migrations in db/migrations/ in filename order.
-
-Migrations are written to be idempotent (IF NOT EXISTS / guarded UPDATEs), so
-this runner is safe to re-run — a second run is a no-op. Connects the same way
-as scripts/import_seed.py, which avoids needing psql on the host (on Windows
-PowerShell `psql < file` redirection doesn't work anyway).
-"""
 import glob
 import os
 
@@ -38,7 +31,6 @@ def main():
             name = os.path.basename(path)
             with open(path, encoding="utf-8") as f:
                 sql = f.read()
-            # One transaction per migration file.
             with conn:
                 with conn.cursor() as cur:
                     cur.execute(sql)

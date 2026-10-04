@@ -1,15 +1,3 @@
-"""Natural-language / personalized search (Phase 3, Flow B).
-
-Per MIT_AI_RISK_REPOSITORY/AIRiskWatch_Design_Decisions_2026-08-01.md §3: a
-free-text query (a question, or a description of a system being built) is
-embedded, matched against ``incident.embedding`` via pgvector cosine
-similarity for a FIXED top-k (never "all matches"), and an LLM produces a
-short grounded summary citing incidents by ID — single-shot, not a chatbot,
-and never asked to assert counts or completeness beyond the k window.
-
-Retrieval itself is embedding-only (no LLM call); the summary is the single
-LLM call this feature makes (LLM call #4 in the design doc's tally).
-"""
 from __future__ import annotations
 
 from typing import Any
@@ -29,7 +17,7 @@ _SUMMARY_DESCRIPTION_CHAR_LIMIT = 600
 
 
 class SearchError(RuntimeError):
-    """Raised when the search pipeline cannot produce a result."""
+    pass
 
 
 def _truncate(text: str | None, limit: int) -> str:
@@ -44,12 +32,7 @@ class SearchService:
         self.db = db
         self.client = client
 
-    # -- retrieval: embedding-only, no LLM call ------------------------------
     def retrieve(self, query: str, top_k: int) -> list[tuple[Incident, str | None, float]]:
-        """Top-k incidents by cosine similarity to the query embedding.
-        Returns (incident, risk_domain, similarity) — similarity in [0, 1],
-        higher is closer (pgvector's ``<=>`` returns cosine *distance*, so we
-        report ``1 - distance``)."""
         query_vector = embed_text(query)
         distance = Incident.embedding.cosine_distance(query_vector)
         rows = self.db.execute(
@@ -87,7 +70,6 @@ class SearchService:
             )
         ]
 
-    # -- summary: the one LLM call in this feature ---------------------------
     def _build_summary_prompt(
         self, query: str, matches: list[tuple[Incident, str | None, float]]
     ) -> tuple[str, str]:
@@ -136,7 +118,6 @@ class SearchService:
             raise SearchError(f"model returned an empty/invalid summary: {raw!r}")
         return summary.strip()
 
-    # -- end-to-end -----------------------------------------------------------
     def search(self, query: str, top_k: int) -> tuple[str, list[SearchResultItem]]:
         candidate_k = max(top_k, SEARCH_CANDIDATE_K)
         candidates = self.retrieve(query, candidate_k)

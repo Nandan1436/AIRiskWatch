@@ -12,8 +12,6 @@ def _build_database_url() -> str:
     if explicit_url:
         return explicit_url
 
-    # Assembled from the same POSTGRES_* variables the seed importer and
-    # docker-compose use, so one .env drives everything.
     user = os.environ["POSTGRES_USER"]
     password = os.environ["POSTGRES_PASSWORD"]
     host = os.environ.get("POSTGRES_HOST", "localhost")
@@ -28,10 +26,6 @@ CORS_ORIGINS: list[str] = os.environ.get(
     "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 ).split(",")
 
-# --- LLM classification (Phase 2) ---------------------------------------
-# LLM_PROVIDER selects which client create_llm_client() builds. Mistral, Groq,
-# and Ollama all speak the OpenAI /chat/completions dialect, so they share one
-# client and differ only by base URL + key + model.
 LLM_PROVIDER: str = os.environ.get("LLM_PROVIDER", "gemini")
 
 GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
@@ -56,4 +50,40 @@ LLM_TIMEOUT_S: float = float(os.environ.get("LLM_TIMEOUT_S", "60"))
 SEARCH_CANDIDATE_K: int = int(os.environ.get("SEARCH_CANDIDATE_K", "30"))
 SEARCH_RERANKER_MODEL: str = os.environ.get(
     "SEARCH_RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L6-v2"
+)
+
+INGESTION_ENABLED: bool = os.environ.get("INGESTION_ENABLED", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+INGESTION_CRON_HOUR: int = int(os.environ.get("INGESTION_CRON_HOUR", "3"))
+INGESTION_TIMEZONE: str = os.environ.get("INGESTION_TIMEZONE", "Asia/Dhaka")
+
+INGESTION_MAX_ARTICLES_PER_SOURCE: int = int(
+    os.environ.get("INGESTION_MAX_ARTICLES_PER_SOURCE", "20")
+)
+
+# Only articles published within this many hours of the run are ingested.
+INGESTION_LOOKBACK_HOURS: float = float(
+    os.environ.get("INGESTION_LOOKBACK_HOURS", "24")
+)
+
+INGESTION_SIMILARITY_THRESHOLD: float = float(
+    os.environ.get("INGESTION_SIMILARITY_THRESHOLD", "0.85")
+)
+
+INGESTION_RELEVANCE_MIN_CONFIDENCE: float = float(
+    os.environ.get("INGESTION_RELEVANCE_MIN_CONFIDENCE", "0.6")
+)
+
+INGESTION_USER_AGENT: str = os.environ.get(
+    "INGESTION_USER_AGENT",
+    "AIRiskWatchBot/1.0 (+https://github.com/Nandan1436/AIRiskWatch; academic research project)",
+)
+INGESTION_REQUEST_DELAY_S: float = float(
+    os.environ.get("INGESTION_REQUEST_DELAY_S", "2.0")
+)
+INGESTION_HTTP_TIMEOUT_S: float = float(
+    os.environ.get("INGESTION_HTTP_TIMEOUT_S", "20")
 )

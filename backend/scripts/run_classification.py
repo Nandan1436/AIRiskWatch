@@ -1,25 +1,3 @@
-"""Phase 2 batch classifier — spends LLM quota.
-
-Two modes:
-
-  --mode eval      Classify the human-labelled gold incidents (minus the 7
-                   few-shot exemplars) and write predictions to JSONL ONLY.
-                   Never touches the database — this is the run you score before
-                   deciding to backfill.
-
-  --mode backfill  Classify the incidents that have no classification at all
-                   (the 256 unclassified) and write an LLM row to the database
-                   via the service, as well as to JSONL.
-
-Both modes are resumable: incidents already present in the run's predictions
-JSONL are skipped, so a Ctrl-C or a 429-exhaustion mid-run loses nothing — rerun
-next day when the free-tier caps reset.
-
-Run from backend/:
-    python scripts/run_classification.py --mode eval --limit 5 --run-name smoke
-    python scripts/run_classification.py --mode eval --sample 300 --seed 42 --run-name dev
-    python scripts/run_classification.py --mode backfill --run-name backfill
-"""
 from __future__ import annotations
 
 import argparse
@@ -29,7 +7,6 @@ import random
 import sys
 from collections import defaultdict
 
-# Make `app` importable when run as `python scripts/run_classification.py`.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from sqlalchemy import select  # noqa: E402
@@ -47,9 +24,7 @@ from app.services.llm_classification_service import (  # noqa: E402
 RESULTS_ROOT = os.path.join(os.path.dirname(__file__), "..", "eval_results")
 
 
-# --- target selection ------------------------------------------------------
 def gold_incident_domains(db) -> dict[int, str]:
-    """incident_id -> a gold risk_domain, for the human-labelled set."""
     rows = db.execute(
         select(MitClassification.incident_id, MitClassification.risk_domain).where(
             MitClassification.classified_by == "human"
@@ -63,7 +38,6 @@ def gold_incident_domains(db) -> dict[int, str]:
 
 
 def unclassified_incident_ids(db) -> list[int]:
-    """Incidents with no classification row at all (the 256 to backfill)."""
     classified = select(MitClassification.incident_id).distinct()
     rows = db.scalars(
         select(Incident.incident_id).where(Incident.incident_id.not_in(classified))
@@ -74,8 +48,6 @@ def unclassified_incident_ids(db) -> list[int]:
 def stratified_sample(
     id_to_domain: dict[int, str], n: int, seed: int, floor: int = 10
 ) -> list[int]:
-    """Sample ~n incident_ids, proportional per domain but at least `floor` from
-    each domain that has them, so small domains stay represented."""
     rnd = random.Random(seed)
     by_domain: dict[str, list[int]] = defaultdict(list)
     for incident_id, domain in id_to_domain.items():
@@ -97,11 +69,7 @@ def random_sample(ids: list[int], n: int, seed: int) -> list[int]:
     return pool[:n]
 
 
-# --- resume ----------------------------------------------------------------
 def already_done_ids(predictions_path: str) -> set[int]:
-    """incident_ids that succeeded in a prior run. Failed attempts (ok=false)
-    are intentionally NOT counted, so a rerun retries them — e.g. after a 429
-    exhaustion or a transient error mid-batch."""
     done: set[int] = set()
     if not os.path.exists(predictions_path):
         return done
@@ -119,7 +87,6 @@ def already_done_ids(predictions_path: str) -> set[int]:
     return done
 
 
-# --- taxonomy guard --------------------------------------------------------
 def check_taxonomy(db) -> None:
     rows = db.execute(
         select(MitClassification.risk_domain, MitClassification.risk_subdomain).where(
@@ -142,7 +109,6 @@ def check_taxonomy(db) -> None:
     )
 
 
-# --- main ------------------------------------------------------------------
 def main() -> None:
     parser = argparse.ArgumentParser(description="Phase 2 LLM classifier batch runner")
     parser.add_argument("--mode", choices=["eval", "backfill"], required=True)
@@ -163,7 +129,6 @@ def main() -> None:
         if not args.skip_check:
             check_taxonomy(db)
 
-        # Select target incident ids.
         if args.mode == "eval":
             id_to_domain = gold_incident_domains(db)
             if not id_to_domain:
@@ -178,11 +143,10 @@ def main() -> None:
                 targets = stratified_sample(id_to_domain, args.sample, args.seed)
             else:
                 targets = sorted(id_to_domain.keys())
-        else:  # backfill
+        else:
             ids = unclassified_incident_ids(db)
             targets = random_sample(ids, args.sample, args.seed) if args.sample else ids
 
-        # Resume: drop ids already written this run.
         done = already_done_ids(predictions_path)
         pending = [i for i in targets if i not in done]
         if args.limit:

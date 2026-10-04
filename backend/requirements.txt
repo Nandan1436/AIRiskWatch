@@ -6,5 +6,7 @@ pandas
 python-dotenv
 pgvector
 httpx
+beautifulsoup4
 scikit-learn
 sentence-transformers
+apscheduler

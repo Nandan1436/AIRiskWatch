@@ -30,10 +30,6 @@ class OrganizationService:
         )
 
     def _is_named(self, org_column: ColumnElement) -> ColumnElement:
-        # AIID seed data uses "unknown" / "unknown-<category>" as a
-        # placeholder when the actual actor was never identified in
-        # reporting - these aren't real organizations, so exclude them
-        # from the ranking rather than let them crowd out named orgs.
         return (org_column != "unknown") & (~org_column.like("unknown-%"))
 
     def _unnest_counts(self, column) -> dict[str, int]:

@@ -1,19 +1,3 @@
-"""Minimal LLM clients for structured JSON classification (Phase 2).
-
-Plain ``httpx`` — no vendor SDKs, no LangChain. Two implementations behind one
-``LlmClient`` protocol:
-
-- ``GeminiClient`` — Google Generative Language REST API, using native
-  ``responseMimeType`` + ``responseSchema`` for schema-constrained JSON.
-- ``OpenAiCompatibleClient`` — any OpenAI ``/chat/completions`` endpoint; covers
-  Mistral (La Plateforme), Groq, and Ollama via a base URL + key + model.
-
-Shared behaviour: client-side RPM pacing (free tiers are rate-limited),
-exponential backoff on 429/5xx honouring ``Retry-After``, and one JSON-repair
-retry if the model returns non-JSON. Failures raise the typed ``LlmClientError``.
-Callers get back a parsed ``dict``; semantic/schema validation is the service's
-job (it can re-call with the validation error to repair).
-"""
 from __future__ import annotations
 
 import json
@@ -22,7 +6,6 @@ from typing import Any, Protocol
 
 import httpx
 
-# Delay import of config values so importing this module never requires keys.
 
 GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -32,20 +15,17 @@ _BACKOFF_CAP_S = 60.0
 
 
 class LlmClientError(RuntimeError):
-    """Any unrecoverable failure talking to an LLM provider."""
+    pass
 
 
 class LlmClient(Protocol):
     def complete_json(
         self, system: str, user: str, response_schema: dict[str, Any]
     ) -> dict[str, Any]:
-        """Return the model's response parsed as a JSON object."""
         ...
 
 
 class _RateLimiter:
-    """Simple sequential throttle: at most ``max_rpm`` calls per minute."""
-
     def __init__(self, max_rpm: int):
         self._min_interval = 60.0 / max_rpm if max_rpm > 0 else 0.0
         self._last_call: float | None = None
@@ -62,7 +42,6 @@ class _RateLimiter:
 
 
 def _retry_after_seconds(response: httpx.Response, attempt: int) -> float:
-    """Honour a ``Retry-After`` header if present, else exponential backoff."""
     header = response.headers.get("Retry-After")
     if header:
         try:
@@ -79,14 +58,12 @@ class _BaseHttpClient:
         self._client = httpx.Client(timeout=timeout_s)
 
     def _post(self, url: str, json_body: dict, headers: dict | None = None) -> dict:
-        """POST with RPM pacing + backoff on 429/5xx. Returns parsed response
-        JSON (the HTTP envelope, not yet the model's content)."""
         last_error: Exception | None = None
         for attempt in range(_MAX_ATTEMPTS):
             self._limiter.wait()
             try:
                 response = self._client.post(url, json=json_body, headers=headers)
-            except httpx.HTTPError as exc:  # network/timeout
+            except httpx.HTTPError as exc:
                 last_error = exc
                 time.sleep(min(_BACKOFF_BASE_S * (2 ** attempt), _BACKOFF_CAP_S))
                 continue
@@ -101,7 +78,6 @@ class _BaseHttpClient:
                 raise last_error
 
             if response.status_code >= 400:
-                # 4xx other than 429 won't fix themselves — fail fast.
                 raise LlmClientError(
                     f"HTTP {response.status_code}: {response.text[:300]}"
                 )
@@ -119,8 +95,6 @@ class _BaseHttpClient:
 
 
 class GeminiClient(_BaseHttpClient):
-    """Google Generative Language API with native JSON-schema output."""
-
     def __init__(
         self, api_key: str, model: str, max_rpm: int = 10, timeout_s: float = 60.0
     ):
@@ -132,10 +106,8 @@ class GeminiClient(_BaseHttpClient):
     def complete_json(
         self, system: str, user: str, response_schema: dict[str, Any]
     ) -> dict[str, Any]:
-        url = (
-            f"{GEMINI_API_BASE}/models/{self.model}:generateContent"
-            f"?key={self._api_key}"
-        )
+        url = f"{GEMINI_API_BASE}/models/{self.model}:generateContent"
+        headers = {"x-goog-api-key": self._api_key}
 
         def call(user_text: str) -> str:
             body = {
@@ -147,7 +119,7 @@ class GeminiClient(_BaseHttpClient):
                     "responseSchema": _to_gemini_schema(response_schema),
                 },
             }
-            envelope = self._post(url, body)
+            envelope = self._post(url, body, headers=headers)
             try:
                 return envelope["candidates"][0]["content"]["parts"][0]["text"]
             except (KeyError, IndexError) as exc:
@@ -159,8 +131,6 @@ class GeminiClient(_BaseHttpClient):
 
 
 class OpenAiCompatibleClient(_BaseHttpClient):
-    """OpenAI /chat/completions-compatible endpoint (Mistral, Groq, Ollama)."""
-
     def __init__(
         self,
         base_url: str,
@@ -189,9 +159,6 @@ class OpenAiCompatibleClient(_BaseHttpClient):
                     {"role": "system", "content": system},
                     {"role": "user", "content": user_text},
                 ],
-                # json_object is the broadly-supported mode across Mistral/Groq/
-                # Ollama; the exact schema is enforced by the service's Pydantic
-                # validation + repair, not the provider.
                 "response_format": {"type": "json_object"},
             }
             envelope = self._post(url, body, headers=headers)
@@ -206,8 +173,6 @@ class OpenAiCompatibleClient(_BaseHttpClient):
 
 
 def _parse_with_repair(call, user: str) -> dict[str, Any]:
-    """Run ``call(user_text)`` and JSON-parse the result; on a parse failure,
-    retry once appending the error to the prompt, then give up."""
     text = call(user)
     try:
         return json.loads(text)
@@ -229,27 +194,32 @@ def _parse_with_repair(call, user: str) -> dict[str, Any]:
 
 
 def _to_gemini_schema(schema: dict[str, Any]) -> dict[str, Any]:
-    """Gemini's responseSchema is OpenAPI-subset JSON Schema. Our schemas are
-    plain object schemas with string enums, which are already compatible; drop
-    keys Gemini rejects (``additionalProperties``, ``$schema``, ``title``)."""
     return _strip_unsupported(schema)
 
 
+_UNSUPPORTED_KEYWORDS = {"additionalProperties", "$schema", "title"}
+
+
 def _strip_unsupported(node: Any) -> Any:
-    unsupported = {"additionalProperties", "$schema", "title"}
     if isinstance(node, dict):
-        return {
-            k: _strip_unsupported(v)
-            for k, v in node.items()
-            if k not in unsupported
-        }
+        result: dict[str, Any] = {}
+        for key, value in node.items():
+            if key in _UNSUPPORTED_KEYWORDS:
+                continue
+            if key == "properties" and isinstance(value, dict):
+                result[key] = {
+                    field: _strip_unsupported(field_schema)
+                    for field, field_schema in value.items()
+                }
+            else:
+                result[key] = _strip_unsupported(value)
+        return result
     if isinstance(node, list):
         return [_strip_unsupported(v) for v in node]
     return node
 
 
 def create_llm_client() -> LlmClient:
-    """Factory: build the client selected by ``LLM_PROVIDER`` in config."""
     from app import config
 
     provider = config.LLM_PROVIDER.lower()
@@ -282,7 +252,7 @@ def create_llm_client() -> LlmClient:
     if provider == "ollama":
         return OpenAiCompatibleClient(
             base_url=config.OLLAMA_BASE_URL,
-            api_key="",  # Ollama needs no key
+            api_key="",
             model=config.OLLAMA_MODEL,
             max_rpm=rpm,
             timeout_s=timeout,

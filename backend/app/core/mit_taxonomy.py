@@ -1,26 +1,7 @@
-"""The MIT AI Risk Repository taxonomy (Slattery et al.), as used by the Phase 2
-classifier and evaluation harness.
-
-This module is the single source of truth for the valid domain / subdomain /
-causal-axis strings. The strings MUST match the seed's stored form exactly —
-i.e. the human gold labels in `mit_classification` after `import_seed.py`'s
-`strip_taxonomy_prefix` (leading "1.2. " numbering removed). Descriptions are
-transcribed from the public MIT AI Risk Repository domain + causal taxonomies;
-they are prompt context only and are not stored.
-
-Use `check_missing_against_db(...)` before spending API quota to assert every
-distinct gold string in the DB is present here — that catches transcription
-typos early. Comparisons go through `normalize()` so an HTML-entity quirk in the
-seed (`&amp;` vs `&`) can't silently break scoring.
-"""
 from __future__ import annotations
 
 import html
 
-# ---------------------------------------------------------------------------
-# Domains and subdomains
-# ---------------------------------------------------------------------------
-# domain -> {"description": str, "subdomains": {subdomain: description}}
 TAXONOMY: dict[str, dict] = {
     "Discrimination and Toxicity": {
         "description": (
@@ -214,9 +195,6 @@ TAXONOMY: dict[str, dict] = {
     },
 }
 
-# ---------------------------------------------------------------------------
-# Causal axes (each includes the third value "Other" that appears in gold data)
-# ---------------------------------------------------------------------------
 CAUSAL_ENTITIES: list[str] = ["AI", "Human", "Other"]
 TIMINGS: list[str] = ["Pre-deployment", "Post-deployment", "Other"]
 INTENTS: list[str] = ["Intentional", "Unintentional", "Other"]
@@ -266,9 +244,6 @@ AXIS_DESCRIPTIONS: dict[str, dict[str, str]] = {
     },
 }
 
-# ---------------------------------------------------------------------------
-# Derived lookups
-# ---------------------------------------------------------------------------
 DOMAINS: list[str] = list(TAXONOMY.keys())
 
 SUBDOMAINS: list[str] = [
@@ -277,19 +252,12 @@ SUBDOMAINS: list[str] = [
     for subdomain in domain["subdomains"]
 ]
 
-# subdomain -> its parent domain
 SUBDOMAIN_TO_DOMAIN: dict[str, str] = {
     subdomain: domain_name
     for domain_name, domain in TAXONOMY.items()
     for subdomain in domain["subdomains"]
 }
 
-# ---------------------------------------------------------------------------
-# Few-shot exemplars — one per domain, held OUT of the eval set.
-# incident_id points at a clean single-classification gold incident; the text
-# (title + description) is loaded from the DB at prompt-build time, the gold
-# label below is shown to the model as the target answer.
-# ---------------------------------------------------------------------------
 FEW_SHOT_EXEMPLARS: list[dict] = [
     {
         "incident_id": 1,
@@ -352,16 +320,7 @@ FEW_SHOT_EXEMPLARS: list[dict] = [
 FEW_SHOT_INCIDENT_IDS: set[int] = {ex["incident_id"] for ex in FEW_SHOT_EXEMPLARS}
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 def normalize(value: str | None) -> str:
-    """Canonicalize a taxonomy string for comparison.
-
-    Unescapes HTML entities (the seed carries a raw `&`, but a re-import from a
-    differently-encoded dump could carry `&amp;`) and collapses surrounding
-    whitespace, so gold-vs-prediction comparison is robust to that quirk.
-    """
     if value is None:
         return ""
     return html.unescape(value).strip()
@@ -372,7 +331,6 @@ def subdomains_for(domain: str) -> list[str]:
 
 
 def is_valid_pair(domain: str, subdomain: str) -> bool:
-    """True if `subdomain` belongs to `domain` (both normalized)."""
     want = normalize(subdomain)
     for candidate in subdomains_for(domain):
         if normalize(candidate) == want:
@@ -381,8 +339,6 @@ def is_valid_pair(domain: str, subdomain: str) -> bool:
 
 
 def taxonomy_prompt_block() -> str:
-    """Render the full domain/subdomain taxonomy with descriptions for the
-    system prompt."""
     lines: list[str] = []
     for domain_name, domain in TAXONOMY.items():
         lines.append(f"DOMAIN: {domain_name}")
@@ -395,7 +351,6 @@ def taxonomy_prompt_block() -> str:
 
 
 def axes_prompt_block() -> str:
-    """Render the three causal axes with their allowed values for the prompt."""
     lines: list[str] = []
     labels = {
         "causal_entity": "causal_entity",
@@ -413,13 +368,6 @@ def axes_prompt_block() -> str:
 def check_missing_against_db(
     gold_domains: set[str], gold_pairs: set[tuple[str, str]]
 ) -> dict[str, list]:
-    """Compare distinct gold strings (from the DB) against this module.
-
-    `gold_domains` = distinct normalized risk_domain values; `gold_pairs` =
-    distinct normalized (risk_domain, risk_subdomain) pairs. Returns any values
-    present in the DB but absent here — a non-empty result means a transcription
-    mismatch to fix before running the batch.
-    """
     known_domains = {normalize(d) for d in DOMAINS}
     known_pairs = {
         (normalize(domain_name), normalize(sub))
