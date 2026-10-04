@@ -5,8 +5,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.embedding_client import embed_text
+from app.config import SEARCH_CANDIDATE_K
+from app.core.embedding_client import embed_text, incident_embedding_input
 from app.core.llm_client import LlmClient, LlmClientError
+from app.core.reranker_client import rerank
 from app.models.incident_model import Incident
 from app.models.mit_classification_model import MitClassification
 from app.schemas.search_schema import SearchResultItem
@@ -41,6 +43,32 @@ class SearchService:
             .limit(top_k)
         ).all()
         return [(incident, domain, 1.0 - dist) for incident, domain, dist in rows]
+
+    def rerank(
+        self, query: str, candidates: list[tuple[Incident, str | None, float]]
+    ) -> list[tuple[Incident, str | None, float]]:
+        """Order vector candidates with a query-aware cross-encoder.
+
+        The tuple's similarity remains the first-stage cosine score for
+        observability. Final ordering is based on the cross-encoder score,
+        which is not a calibrated percentage.
+        """
+        documents = [
+            incident_embedding_input(incident.title, incident.description)
+            for incident, _, _ in candidates
+        ]
+        try:
+            relevance_scores = rerank(query, documents)
+        except Exception as exc:
+            raise SearchError(f"reranking failed: {exc}") from exc
+        return [
+            candidate
+            for _, candidate in sorted(
+                zip(relevance_scores, candidates, strict=True),
+                key=lambda item: item[0],
+                reverse=True,
+            )
+        ]
 
     def _build_summary_prompt(
         self, query: str, matches: list[tuple[Incident, str | None, float]]
@@ -91,7 +119,9 @@ class SearchService:
         return summary.strip()
 
     def search(self, query: str, top_k: int) -> tuple[str, list[SearchResultItem]]:
-        matches = self.retrieve(query, top_k)
+        candidate_k = max(top_k, SEARCH_CANDIDATE_K)
+        candidates = self.retrieve(query, candidate_k)
+        matches = self.rerank(query, candidates)[:top_k]
         summary = self.summarize(query, matches)
         results = [
             SearchResultItem(

@@ -6,6 +6,8 @@ load_dotenv()
 
 
 def _build_database_url() -> str:
+    # A full connection string is used for hosted PostgreSQL providers such as
+    # Neon. Otherwise retain the local Docker-friendly POSTGRES_* fallback.
     explicit_url = os.environ.get("DATABASE_URL")
     if explicit_url:
         return explicit_url
@@ -42,6 +44,13 @@ OLLAMA_MODEL: str = os.environ.get("OLLAMA_MODEL", "qwen3:4b")
 
 LLM_MAX_RPM: int = int(os.environ.get("LLM_MAX_RPM", "10"))
 LLM_TIMEOUT_S: float = float(os.environ.get("LLM_TIMEOUT_S", "60"))
+
+# pgvector retrieves this broad candidate pool; a local cross-encoder then
+# orders it more precisely before the public top_k is returned.
+SEARCH_CANDIDATE_K: int = int(os.environ.get("SEARCH_CANDIDATE_K", "30"))
+SEARCH_RERANKER_MODEL: str = os.environ.get(
+    "SEARCH_RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L6-v2"
+)
 
 INGESTION_ENABLED: bool = os.environ.get("INGESTION_ENABLED", "false").lower() in (
     "1",
