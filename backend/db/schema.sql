@@ -45,7 +45,7 @@ CREATE TABLE mit_classification (
     classified_at   TIMESTAMPTZ    -- when an LLM classification was written; NULL for gold rows
 );
 
-CREATE TABLE app_user (
+CREATE TABLE "user" (  -- reserved word: always double-quote "user" in raw SQL
     id                   SERIAL PRIMARY KEY,
     email                TEXT NOT NULL UNIQUE,  -- stored lower-cased
     username             TEXT NOT NULL UNIQUE,

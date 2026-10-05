@@ -38,7 +38,7 @@ Timeline: the 11 Oct demo is close. Milestones are ordered so that if time runs 
 **New migration `db/migrations/003_add_user_accounts.sql`** (idempotent, `IF NOT EXISTS`). Mirror it in `db/schema.sql`.
 
 ```sql
-CREATE TABLE IF NOT EXISTS app_user (           -- "user" is reserved in Postgres; name from the spec
+CREATE TABLE IF NOT EXISTS "user" (             -- reserved word: always double-quote in raw SQL
     id                   SERIAL PRIMARY KEY,
     email                TEXT NOT NULL UNIQUE,  -- stored lower-cased
     username             TEXT NOT NULL UNIQUE,

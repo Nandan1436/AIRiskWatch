@@ -10,7 +10,7 @@ ROLE_ADMIN = "admin"
 
 
 class User(Base):
-    __tablename__ = "app_user"
+    __tablename__ = "user"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(Text, unique=True)

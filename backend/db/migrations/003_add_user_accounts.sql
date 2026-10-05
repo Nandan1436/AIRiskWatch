@@ -1,7 +1,9 @@
 -- Phase 5: user accounts for email/password and Google sign-in, with an
--- 'admin' role (see phase5.md). The table is app_user because "user" is a
--- reserved word in Postgres. Idempotent: safe to re-run (IF NOT EXISTS).
-CREATE TABLE IF NOT EXISTS app_user (
+-- 'admin' role (see phase5.md). "user" is a reserved word in Postgres, so raw
+-- SQL must always double-quote it: unquoted, SELECT * FROM user returns the
+-- current role instead of this table. SQLAlchemy quotes it automatically.
+-- Idempotent: safe to re-run (IF NOT EXISTS).
+CREATE TABLE IF NOT EXISTS "user" (
     id                   SERIAL PRIMARY KEY,
     email                TEXT NOT NULL UNIQUE,  -- stored lower-cased
     username             TEXT NOT NULL UNIQUE,
