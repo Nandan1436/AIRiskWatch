@@ -6,3 +6,7 @@ export * from "./SearchContainer";
 export * from "./SignInContainer";
 export * from "./SignUpContainer";
 export * from "./AccountContainer";
+export * from "./AdminUsersContainer";
+export * from "./AdminIngestionContainer";
+export * from "./AdminIncidentsContainer";
+export * from "./AdminReportsContainer";

@@ -4,5 +4,6 @@ export * from "./ErrorMessage";
 export * from "./LoadingSpinner";
 export * from "./Pagination";
 export * from "./StatCard";
+export * from "./TextAreaField";
 export * from "./TextField";
 export * from "./ToggleSwitch";

@@ -1,0 +1,132 @@
+@reference "../../styles/global.css";
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  padding: 4px;
+  width: fit-content;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.tab {
+  padding: 7px 16px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg-dim);
+  text-decoration: none;
+}
+
+.tab:hover {
+  color: var(--fg);
+}
+
+.tabActive {
+  composes: tab;
+  background: var(--surface-2);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--border-soft);
+}
+
+.tabActive:hover {
+  color: var(--fg);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  @apply text-[11px] font-semibold uppercase tracking-[.07em] text-fg-faint;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--fg);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.mono {
+  @apply font-mono text-[12px] text-fg-dim;
+}
+
+.dim {
+  color: var(--fg-dim);
+}
+
+.titleCell {
+  max-width: 420px;
+}
+
+.truncate {
+  @apply block truncate;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pill {
+  @apply rounded-full px-[9px] py-[2px] text-[11px] font-semibold;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  color: var(--fg-dim);
+}
+
+.pillAccent {
+  composes: pill;
+  color: var(--accent-strong);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--fg-dim);
+  font-size: 13px;
+}
