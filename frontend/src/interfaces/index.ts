@@ -1,4 +1,5 @@
 export * from "./api";
+export * from "./auth";
 export * from "./classificationBreakdown";
 export * from "./incident";
 export * from "./organization";
@@ -6,3 +7,4 @@ export * from "./report";
 export * from "./riskDomain";
 export * from "./search";
 export * from "./summary";
+export * from "./user";

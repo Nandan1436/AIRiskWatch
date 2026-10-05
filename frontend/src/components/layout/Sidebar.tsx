@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import styles from "./Sidebar.module.css";
 
@@ -52,7 +53,14 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const { theme, toggleTheme } = useTheme();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  function handleSignOut() {
+    logout();
+    navigate("/incidents");
+  }
 
   return (
     <aside className={styles.aside}>
@@ -97,6 +105,36 @@ export function Sidebar() {
           ),
         )}
       </nav>
+
+      <div className={styles.account}>
+        {isAuthenticated && user ? (
+          <>
+            <Link
+              to="/account"
+              className={
+                location.pathname.startsWith("/account")
+                  ? styles.accountCardActive
+                  : styles.accountCard
+              }
+            >
+              <span className={styles.avatar}>{user.username.charAt(0).toUpperCase()}</span>
+              <span className="min-w-0 leading-tight">
+                <span className={styles.accountName}>{user.username}</span>
+                <span className={styles.accountEmail}>{user.email}</span>
+              </span>
+            </Link>
+            <button type="button" onClick={handleSignOut} className={styles.signOut}>
+              Sign out
+            </button>
+          </>
+        ) : (
+          !isLoading && (
+            <Link to="/sign-in" state={{ from: location }} className={styles.signIn}>
+              Sign in
+            </Link>
+          )
+        )}
+      </div>
 
       <div className={styles.appearance}>
         <div className={styles.appearanceLabel}>Appearance</div>
