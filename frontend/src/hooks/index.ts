@@ -1,6 +1,7 @@
 export * from "./adminHooks";
 export * from "./authHooks";
 export * from "./classificationBreakdownHooks";
+export * from "./digestHooks";
 export * from "./incidentHooks";
 export * from "./organizationHooks";
 export * from "./riskDomainHooks";

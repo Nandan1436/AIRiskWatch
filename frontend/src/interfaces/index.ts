@@ -2,6 +2,7 @@ export * from "./admin";
 export * from "./api";
 export * from "./auth";
 export * from "./classificationBreakdown";
+export * from "./digest";
 export * from "./incident";
 export * from "./organization";
 export * from "./report";
