@@ -4,6 +4,9 @@ import type {
   AdminReport,
   AdminReportDetail,
   AdminUserUpdateRequest,
+  DigestDeliveryStatus,
+  DigestSendRequest,
+  DigestSendResponse,
   IncidentDetail,
   IncidentWriteRequest,
   IngestionRunSummary,
@@ -82,4 +85,25 @@ export async function updateReport(
 
 export async function deleteReport(reportNumber: number): Promise<void> {
   await apiClient.delete(`/api/admin/reports/${reportNumber}`);
+}
+
+// month is "YYYY-MM"; omitted means the previous month.
+export async function getDigestPreview(month?: string): Promise<string> {
+  const { data } = await apiClient.get<string>("/api/admin/digest/preview", {
+    params: { month },
+    responseType: "text",
+  });
+  return data;
+}
+
+export async function getDigestStatus(month?: string): Promise<DigestDeliveryStatus> {
+  const { data } = await apiClient.get<DigestDeliveryStatus>("/api/admin/digest/status", {
+    params: { month },
+  });
+  return data;
+}
+
+export async function sendDigest(request: DigestSendRequest): Promise<DigestSendResponse> {
+  const { data } = await apiClient.post<DigestSendResponse>("/api/admin/digest/send", request);
+  return data;
 }

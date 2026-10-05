@@ -11,6 +11,7 @@ from app.routes.auth_route import router as auth_router
 from app.routes.classification_breakdown_route import (
     router as classification_breakdown_router,
 )
+from app.routes.digest_route import router as digest_router
 from app.routes.incident_route import router as incident_router
 from app.routes.ingestion_route import router as ingestion_router
 from app.routes.organization_route import router as organization_router
@@ -47,37 +48,58 @@ def _run_scheduled_ingestion() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler = None
-    if config.INGESTION_ENABLED:
+    if config.INGESTION_ENABLED or config.DIGEST_EMAIL_ENABLED:
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.cron import CronTrigger
 
         scheduler = BackgroundScheduler(timezone=config.INGESTION_TIMEZONE)
-        scheduler.add_job(
-            _run_scheduled_ingestion,
-            trigger=CronTrigger(
-                hour=config.INGESTION_CRON_HOUR,
-                minute=0,
-                timezone=config.INGESTION_TIMEZONE,
-            ),
-            id="daily_ingestion",
-            max_instances=1,
-            coalesce=True,
-        )
+        if config.INGESTION_ENABLED:
+            scheduler.add_job(
+                _run_scheduled_ingestion,
+                trigger=CronTrigger(
+                    hour=config.INGESTION_CRON_HOUR,
+                    minute=0,
+                    timezone=config.INGESTION_TIMEZONE,
+                ),
+                id="daily_ingestion",
+                max_instances=1,
+                coalesce=True,
+            )
+            logger.info(
+                "ingestion scheduled: daily at %02d:00 %s",
+                config.INGESTION_CRON_HOUR,
+                config.INGESTION_TIMEZONE,
+            )
+        if config.DIGEST_EMAIL_ENABLED:
+            from app.services.digest_email_service import run_digest_job
+
+            scheduler.add_job(
+                run_digest_job,
+                trigger=CronTrigger(
+                    day=1,
+                    hour=config.DIGEST_CRON_HOUR,
+                    minute=0,
+                    timezone=config.INGESTION_TIMEZONE,
+                ),
+                id="monthly_digest",
+                max_instances=1,
+                coalesce=True,
+            )
+            logger.info(
+                "digest email scheduled: 1st of the month at %02d:00 %s",
+                config.DIGEST_CRON_HOUR,
+                config.INGESTION_TIMEZONE,
+            )
         scheduler.start()
-        logger.info(
-            "ingestion scheduler started: daily at %02d:00 %s",
-            config.INGESTION_CRON_HOUR,
-            config.INGESTION_TIMEZONE,
-        )
     else:
-        logger.info("ingestion scheduler disabled (INGESTION_ENABLED=false)")
+        logger.info("scheduler disabled (INGESTION_ENABLED and DIGEST_EMAIL_ENABLED are false)")
 
     try:
         yield
     finally:
         if scheduler is not None:
             scheduler.shutdown(wait=True)
-            logger.info("ingestion scheduler stopped")
+            logger.info("scheduler stopped")
 
 
 app = FastAPI(title="AIRiskWatch", lifespan=lifespan)
@@ -95,6 +117,7 @@ app.include_router(risk_domain_router)
 app.include_router(classification_breakdown_router)
 app.include_router(organization_router)
 app.include_router(summary_router)
+app.include_router(digest_router)
 app.include_router(search_router)
 app.include_router(ingestion_router)
 app.include_router(auth_router)

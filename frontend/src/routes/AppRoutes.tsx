@@ -4,6 +4,7 @@ import {
   AdminPage,
   IncidentDetailPage,
   IncidentListPage,
+  MonthlyDigestPage,
   SearchPage,
   SignInPage,
   SignUpPage,
@@ -19,6 +20,8 @@ export function AppRoutes() {
       <Route path="/incidents" element={<IncidentListPage />} />
       <Route path="/incidents/:incidentId" element={<IncidentDetailPage />} />
       <Route path="/search" element={<SearchPage />} />
+      <Route path="/digest" element={<MonthlyDigestPage />} />
+      <Route path="/digest/:yearMonth" element={<MonthlyDigestPage />} />
 
       <Route element={<GuestRoute />}>
         <Route path="/sign-in" element={<SignInPage />} />
@@ -35,6 +38,7 @@ export function AppRoutes() {
         <Route path="/admin/ingestion" element={<AdminPage section="ingestion" />} />
         <Route path="/admin/incidents" element={<AdminPage section="incidents" />} />
         <Route path="/admin/reports" element={<AdminPage section="reports" />} />
+        <Route path="/admin/digest" element={<AdminPage section="digest" />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/incidents" replace />} />
