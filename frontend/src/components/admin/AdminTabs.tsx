@@ -6,6 +6,7 @@ const TABS = [
   { label: "Ingestion", to: "/admin/ingestion" },
   { label: "Incidents", to: "/admin/incidents" },
   { label: "Reports", to: "/admin/reports" },
+  { label: "Digest", to: "/admin/digest" },
 ];
 
 export function AdminTabs() {

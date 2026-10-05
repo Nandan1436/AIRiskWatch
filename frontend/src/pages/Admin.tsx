@@ -2,19 +2,21 @@ import type { ReactNode } from "react";
 import { AdminTabs } from "../components/admin";
 import { PageHeader } from "../components/layout";
 import {
+  AdminDigestContainer,
   AdminIncidentsContainer,
   AdminIngestionContainer,
   AdminReportsContainer,
   AdminUsersContainer,
 } from "../containers";
 
-export type AdminSection = "users" | "ingestion" | "incidents" | "reports";
+export type AdminSection = "users" | "ingestion" | "incidents" | "reports" | "digest";
 
 const SECTIONS: Record<AdminSection, { subtitle: string; content: ReactNode }> = {
   users: { subtitle: "Manage roles and account access", content: <AdminUsersContainer /> },
   ingestion: { subtitle: "Trigger a news ingestion run", content: <AdminIngestionContainer /> },
   incidents: { subtitle: "Create, edit and delete incidents", content: <AdminIncidentsContainer /> },
   reports: { subtitle: "Create, edit and delete source reports", content: <AdminReportsContainer /> },
+  digest: { subtitle: "Preview and send the monthly digest email", content: <AdminDigestContainer /> },
 };
 
 export function Admin({ section }: { section: AdminSection }) {

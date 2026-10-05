@@ -73,17 +73,17 @@ function AccountSettings({ user }: { user: User }) {
 
       <Card
         title="Email notifications"
-        description="A monthly summary of newly recorded AI incidents and risk trends."
+        description="A monthly digest of newly reported AI incidents and risk trends."
       >
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="text-[13.5px] font-semibold text-fg">Monthly summary email</div>
+            <div className="text-[13.5px] font-semibold text-fg">Monthly digest email</div>
             <div className="mt-px text-[12px] text-fg-faint">
-              Coming soon. Your choice is saved now and used once emails start.
+              Sent at the start of each month, covering the previous month.
             </div>
           </div>
           <ToggleSwitch
-            label="Monthly summary email"
+            label="Monthly digest email"
             checked={user.email_notifications}
             onChange={setEmailNotifications}
             disabled={isSubmitting}
