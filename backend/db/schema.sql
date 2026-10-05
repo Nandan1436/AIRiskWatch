@@ -53,9 +53,16 @@ CREATE TABLE "user" (  -- reserved word: always double-quote "user" in raw SQL
     google_sub           TEXT UNIQUE,           -- NULL for password-only accounts
     role                 TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     is_active            BOOLEAN NOT NULL DEFAULT TRUE,
-    email_notifications  BOOLEAN NOT NULL DEFAULT TRUE,  -- monthly summary email (later phase)
+    email_notifications  BOOLEAN NOT NULL DEFAULT TRUE,  -- monthly digest email opt-in
     created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE digest_delivery (  -- one row per user, overwritten each month
+    user_id       INTEGER PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
+    digest_month  DATE NOT NULL,  -- first day of the month the digest covers (not the send month)
+    status        TEXT NOT NULL CHECK (status IN ('pending', 'sent', 'failed')),
+    sent_at       TIMESTAMPTZ
 );
 
 CREATE INDEX idx_incident_date ON incident(incident_date);
