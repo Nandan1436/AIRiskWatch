@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import config
 from app.config import CORS_ORIGINS
+from app.routes.auth_route import router as auth_router
 from app.routes.classification_breakdown_route import (
     router as classification_breakdown_router,
 )
@@ -16,6 +17,7 @@ from app.routes.report_route import router as report_router
 from app.routes.risk_domain_route import router as risk_domain_router
 from app.routes.search_route import router as search_router
 from app.routes.summary_route import router as summary_router
+from app.routes.user_route import router as user_router
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,8 @@ app.include_router(organization_router)
 app.include_router(summary_router)
 app.include_router(search_router)
 app.include_router(ingestion_router)
+app.include_router(auth_router)
+app.include_router(user_router)
 
 
 @app.get("/health")

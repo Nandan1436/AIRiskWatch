@@ -30,3 +30,11 @@ class User(Base):
     @property
     def is_admin(self) -> bool:
         return self.role == ROLE_ADMIN
+
+    @property
+    def has_password(self) -> bool:
+        return self.password_hash is not None
+
+    @property
+    def has_google(self) -> bool:
+        return self.google_sub is not None
