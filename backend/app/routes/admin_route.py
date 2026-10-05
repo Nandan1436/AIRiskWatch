@@ -1,5 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from datetime import date
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
+
+from app.core import email_client
 
 from app.database import get_db
 from app.models.report_model import Report
@@ -16,9 +21,21 @@ from app.schemas.admin_schema import (
     ReportCreateRequest,
     ReportUpdateRequest,
 )
+from app.schemas.digest_schema import (
+    DigestDeliveryStatusResponse,
+    DigestSendRequest,
+    DigestSendResponse,
+)
 from app.schemas.incident_schema import IncidentDetailResponse
 from app.schemas.user_schema import UserResponse
 from app.services.admin_service import AdminError, AdminService, IdAllocationBusyError
+from app.services.digest_email_service import (
+    delivery_status,
+    render_digest_email,
+    run_digest_job,
+    send_monthly_digest,
+)
+from app.services.digest_service import DigestService, parse_month, previous_month
 
 # Every route here is admin-only; require_admin runs before each handler.
 router = APIRouter(
@@ -180,3 +197,57 @@ def delete_report(
     if not service.delete_report(report_number):
         raise HTTPException(status_code=404, detail="Report not found")
     return Response(status_code=204)
+
+
+# --- monthly digest ------------------------------------------------------
+
+
+def _digest_month(db: Session, month: str | None) -> date:
+    if month is None:
+        return previous_month()
+    try:
+        parsed = parse_month(month)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="month must be YYYY-MM") from exc
+    if not DigestService(db).in_window(parsed):
+        raise HTTPException(status_code=400, detail="Digest month not available")
+    return parsed
+
+
+@router.get("/digest/preview", response_class=HTMLResponse)
+def preview_digest(
+    month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$"),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    digest_month = _digest_month(db, month)
+    email = render_digest_email(DigestService(db).get_month(digest_month))
+    return HTMLResponse(email.html)
+
+
+@router.get("/digest/status", response_model=DigestDeliveryStatusResponse)
+def digest_status(
+    month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$"),
+    db: Session = Depends(get_db),
+) -> DigestDeliveryStatusResponse:
+    return delivery_status(db, _digest_month(db, month))
+
+
+# A test send runs inline so SMTP errors surface immediately; the full send
+# runs in the background and its progress shows up in /digest/status.
+@router.post("/digest/send", response_model=DigestSendResponse, status_code=202)
+def send_digest(
+    request: DigestSendRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> DigestSendResponse:
+    if not email_client.is_configured():
+        raise HTTPException(status_code=503, detail="Email sending is not configured (SMTP_HOST)")
+    digest_month = _digest_month(db, request.month)
+    if request.test_to:
+        try:
+            send_monthly_digest(db, digest_month, test_to=request.test_to)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Test email failed: {exc}") from exc
+    else:
+        background_tasks.add_task(run_digest_job, digest_month)
+    return DigestSendResponse(month=digest_month, test_to=request.test_to)
