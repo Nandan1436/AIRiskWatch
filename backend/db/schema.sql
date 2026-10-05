@@ -45,6 +45,19 @@ CREATE TABLE mit_classification (
     classified_at   TIMESTAMPTZ    -- when an LLM classification was written; NULL for gold rows
 );
 
+CREATE TABLE app_user (
+    id                   SERIAL PRIMARY KEY,
+    email                TEXT NOT NULL UNIQUE,  -- stored lower-cased
+    username             TEXT NOT NULL UNIQUE,
+    password_hash        TEXT,                  -- NULL for Google-only accounts
+    google_sub           TEXT UNIQUE,           -- NULL for password-only accounts
+    role                 TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    is_active            BOOLEAN NOT NULL DEFAULT TRUE,
+    email_notifications  BOOLEAN NOT NULL DEFAULT TRUE,  -- monthly summary email (later phase)
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX idx_incident_date ON incident(incident_date);
 CREATE INDEX idx_mit_classification_incident_id ON mit_classification(incident_id);
 CREATE INDEX idx_mit_classification_risk_domain ON mit_classification(risk_domain);
