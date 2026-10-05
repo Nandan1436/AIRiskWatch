@@ -96,3 +96,24 @@ JWT_EXPIRE_MINUTES: int = int(os.environ.get("JWT_EXPIRE_MINUTES", "1440"))
 
 # OAuth 2.0 Web client ID from Google Cloud; the frontend uses the same value.
 GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "")
+
+# Monthly digest email. SMTP uses STARTTLS (e.g. smtp.gmail.com:587 with a
+# Gmail app password). Leaving SMTP_HOST empty disables sending; the digest
+# page and the admin preview still work.
+SMTP_HOST: str = os.environ.get("SMTP_HOST", "")
+SMTP_PORT: int = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME: str = os.environ.get("SMTP_USERNAME", "")
+SMTP_PASSWORD: str = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM: str = os.environ.get("SMTP_FROM", "")
+
+# Base URL of the frontend, used for links inside the email.
+FRONTEND_BASE_URL: str = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")
+
+# Starts the in-process monthly send (1st of each month at DIGEST_CRON_HOUR,
+# in INGESTION_TIMEZONE). Off by default, like ingestion; single worker only.
+DIGEST_EMAIL_ENABLED: bool = os.environ.get("DIGEST_EMAIL_ENABLED", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+DIGEST_CRON_HOUR: int = int(os.environ.get("DIGEST_CRON_HOUR", "8"))
