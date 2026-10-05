@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import config
 from app.config import CORS_ORIGINS
+from app.routes.admin_route import router as admin_router
 from app.routes.auth_route import router as auth_router
 from app.routes.classification_breakdown_route import (
     router as classification_breakdown_router,
@@ -98,6 +99,7 @@ app.include_router(search_router)
 app.include_router(ingestion_router)
 app.include_router(auth_router)
 app.include_router(user_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
