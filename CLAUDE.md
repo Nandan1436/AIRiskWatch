@@ -89,6 +89,13 @@ Both packages need `.env` copied from `.env.example`.
 - Google sign-in needs the same OAuth Web client ID in `GOOGLE_CLIENT_ID`
   (backend) and `VITE_GOOGLE_CLIENT_ID` (frontend). Without it the Google
   button is hidden and `/api/auth/google` returns 401.
+- Monthly digest (`digest_service.py`, `digest_email_service.py`): there is
+  no digest table; months are queried live. An incident's digest month is its
+  earliest linked `report.published_date` (falling back to `incident_date`),
+  not `incident_date`. `digest_delivery` holds one row per user (overwritten
+  each month) and its atomic claim upsert is what prevents duplicate sends.
+  Sending needs the `SMTP_*` keys; the cron (`DIGEST_EMAIL_ENABLED`) shares
+  the ingestion scheduler and has the same single-worker caveat.
 - Only the MIT taxonomy data is in scope. CSET/GMF classifications, the
   mitigation crosswalk, and entity-graph data are deferred; don't assume
   models or routes exist for them.
