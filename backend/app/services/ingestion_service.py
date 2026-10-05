@@ -289,10 +289,25 @@ def _entry_published_date(entry: news_client.NewsArticle) -> date | None:
     return entry.published_date.date() if entry.published_date else None
 
 
-def _next_id(db: Session, column) -> int:
-    # MAX + 1 is only safe because run_ingestion_cycle holds the advisory lock.
+def next_id(db: Session, column) -> int:
+    # MAX + 1 is only safe under the advisory lock: run_ingestion_cycle holds it
+    # for a whole run, manual inserts take it via try_lock_id_allocation.
     current = db.scalar(select(func.coalesce(func.max(column), 0)))
     return int(current or 0) + 1
+
+
+def try_lock_id_allocation(db: Session) -> bool:
+    """Take the ingestion lock until db's current transaction ends.
+
+    Lets admin inserts allocate ids with next_id; returns False while an
+    ingestion run holds the lock.
+    """
+    return bool(
+        db.scalar(
+            sql_text("SELECT pg_try_advisory_xact_lock(:key)"),
+            {"key": _ADVISORY_LOCK_KEY},
+        )
+    )
 
 
 def discover_articles(
@@ -431,7 +446,7 @@ def _insert_report(
     fields: ReportFields,
     body_text: str,
 ) -> int:
-    report_number = _next_id(db, Report.report_number)
+    report_number = next_id(db, Report.report_number)
     db.add(
         Report(
             report_number=report_number,
@@ -509,7 +524,7 @@ def create_incident(
     embedding: list[float] | None,
     summary: IngestionRunSummary,
 ) -> int:
-    incident_id = _next_id(db, Incident.incident_id)
+    incident_id = next_id(db, Incident.incident_id)
     db.add(
         Incident(
             incident_id=incident_id,

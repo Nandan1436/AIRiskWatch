@@ -10,3 +10,8 @@ beautifulsoup4
 scikit-learn
 sentence-transformers
 apscheduler
+bcrypt
+PyJWT
+google-auth
+requests
+email-validator

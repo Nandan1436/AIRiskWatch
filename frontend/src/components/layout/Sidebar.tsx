@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import styles from "./Sidebar.module.css";
 
@@ -50,9 +51,28 @@ const NAV_ITEMS = [
   },
 ];
 
+const ADMIN_NAV_ITEM = {
+  label: "Admin",
+  to: "/admin",
+  icon: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  ),
+};
+
 export function Sidebar() {
   const { theme, toggleTheme } = useTheme();
+  const { user, isAuthenticated, isAdmin, isLoading, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
+
+  function handleSignOut() {
+    logout();
+    navigate("/incidents");
+  }
 
   return (
     <aside className={styles.aside}>
@@ -71,7 +91,7 @@ export function Sidebar() {
       </div>
 
       <nav className={styles.nav}>
-        {NAV_ITEMS.map((item) =>
+        {navItems.map((item) =>
           item.to ? (
             <Link
               key={item.label}
@@ -97,6 +117,36 @@ export function Sidebar() {
           ),
         )}
       </nav>
+
+      <div className={styles.account}>
+        {isAuthenticated && user ? (
+          <>
+            <Link
+              to="/account"
+              className={
+                location.pathname.startsWith("/account")
+                  ? styles.accountCardActive
+                  : styles.accountCard
+              }
+            >
+              <span className={styles.avatar}>{user.username.charAt(0).toUpperCase()}</span>
+              <span className="min-w-0 leading-tight">
+                <span className={styles.accountName}>{user.username}</span>
+                <span className={styles.accountEmail}>{user.email}</span>
+              </span>
+            </Link>
+            <button type="button" onClick={handleSignOut} className={styles.signOut}>
+              Sign out
+            </button>
+          </>
+        ) : (
+          !isLoading && (
+            <Link to="/sign-in" state={{ from: location }} className={styles.signIn}>
+              Sign in
+            </Link>
+          )
+        )}
+      </div>
 
       <div className={styles.appearance}>
         <div className={styles.appearanceLabel}>Appearance</div>

@@ -87,3 +87,12 @@ INGESTION_REQUEST_DELAY_S: float = float(
 INGESTION_HTTP_TIMEOUT_S: float = float(
     os.environ.get("INGESTION_HTTP_TIMEOUT_S", "20")
 )
+
+# Phase 5 authentication. Leaving JWT_SECRET empty makes app/core/security.py
+# fall back to a per-process random secret, so tokens die on every restart.
+JWT_SECRET: str = os.environ.get("JWT_SECRET", "")
+JWT_ALGORITHM: str = os.environ.get("JWT_ALGORITHM", "HS256")
+JWT_EXPIRE_MINUTES: int = int(os.environ.get("JWT_EXPIRE_MINUTES", "1440"))
+
+# OAuth 2.0 Web client ID from Google Cloud; the frontend uses the same value.
+GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "")

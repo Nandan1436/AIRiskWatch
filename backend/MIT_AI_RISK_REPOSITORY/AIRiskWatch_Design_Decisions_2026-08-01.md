@@ -55,6 +55,7 @@ The recurring confusion was treating "scrape → classify" as one fused step. It
   - **Optional stretch, not core:** an LLM tie-breaker call for borderline near-threshold cases ("are these the same incident? yes/no") — only if the embedding-only threshold proves too noisy in practice. This would be a 4th ingestion-side LLM call if added; treat it as optional/future work, not part of the baseline design.
 - **Classification reclassification policy:** classify once at incident creation (branch B); do **not** automatically reclassify when new reports later attach to an existing incident via branch A. Reclassifying on every new corroborating report adds LLM cost for unclear benefit; revisit only if evidence shows early classifications are frequently wrong once more reports accumulate.
 - **Human review gate:** confirmed fully automatic end-to-end for this project's scope — no admin/reviewer role, no manual approval queue before a scraped incident enters the live corpus. (The spec's F11 "ingestion review queue" and admin role are documented as Exciting-tier / target-system scope, explicitly **not** implemented in this project — see SRS §2.1.3 "Administrator and reviewer roles..." bullet, which is deliberately scoped out.)
+  - **Update 2026-10-05 (Phase 5):** an `admin` role now exists for user management, triggering ingestion runs and manual incident/report CRUD (`phase5.md`). Ingestion itself is still fully automatic with no review queue.
 
 ---
 
