@@ -1,7 +1,10 @@
-> **Status: in progress (5 Oct 2026)** on branch `feat-user-accounts-and-admin`.
+> **Status: implemented (5 Oct 2026)** on branch `feat-user-accounts-and-admin`.
 > Scope was narrowed during planning: only register / login / logout ship in
 > this phase. Forgot/reset password, change password, delete account and SMTP
-> are deferred to the monthly-email phase.
+> are deferred to the monthly-email phase. Differences from the plan below:
+> the table is named `"user"` (quoted reserved word) instead of `app_user`;
+> admin incident/report CRUD lives in `admin_service.py`, which allocates ids
+> through `ingestion_service.try_lock_id_allocation` + `next_id`.
 
 # Phase 5: User accounts, authentication and admin panel
 

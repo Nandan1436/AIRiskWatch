@@ -19,6 +19,7 @@ python scripts/apply_migrations.py            # db/migrations/*.sql, idempotent
 python scripts/import_seed.py                 # (re)load the MIT seed corpus
 python scripts/backfill_embeddings.py         # local model, no API key; safe to re-run
 uvicorn app.main:app --reload                 # http://127.0.0.1:8000, /docs, /health
+python scripts/create_admin.py --email you@example.com   # create or promote an admin
 ```
 
 Classification (spends LLM quota):
@@ -58,10 +59,9 @@ Both packages need `.env` copied from `.env.example`.
 
 ## Gotchas
 
-- The app reads `DATABASE_URL`, but `scripts/apply_migrations.py` and
-  `scripts/import_seed.py` connect with the `POSTGRES_*` variables, which still
-  point at the old local Docker database. Fix those scripts (or the variables)
-  before running them against Neon.
+- `scripts/apply_migrations.py` uses `DATABASE_URL` (Neon), but
+  `scripts/import_seed.py` still connects with the `POSTGRES_*` variables,
+  which point at the old local Docker database. Fix it before re-seeding Neon.
 - Keep `DATABASE_URL` on Neon's **direct** endpoint, not the `-pooler` one. The
   ingestion advisory lock is session-level and breaks under PgBouncer
   transaction pooling. The engine uses `pool_pre_ping` because Neon closes
@@ -74,8 +74,21 @@ Both packages need `.env` copied from `.env.example`.
 - The backend uses no repository layer, although `backend/docs/` describes one
   as optional. Services query SQLAlchemy models directly; routes inject them
   through a `get_<resource>_service` `Depends` factory.
-- The frontend has no auth. The route guards in
-  `frontend/docs/07-routing-and-auth.md` are template reference only.
+- Auth (Phase 5, `phase5.md`): email/password and Google sign-in issue a
+  Bearer JWT that the frontend keeps in localStorage (`airiskwatch-auth`, read
+  only by `AuthContext` and `apiClient`). The site stays public; only
+  `/account` (`ProtectedRoute`) and `/admin/*` (`AdminRoute`) are guarded.
+  Backend guards are `get_current_user` / `require_admin` in
+  `app/routes/auth_dependencies.py`. They reload the user on every request, so
+  role and deactivation changes apply at once. `/api/admin/*` and
+  `POST /api/ingestion/run` are admin-only. Admins are made with
+  `scripts/create_admin.py`, never through the API.
+- The users table is `"user"`, which is a reserved word. Raw SQL must
+  double-quote it: unquoted, `SELECT * FROM user` silently returns the current
+  role instead of the table.
+- Google sign-in needs the same OAuth Web client ID in `GOOGLE_CLIENT_ID`
+  (backend) and `VITE_GOOGLE_CLIENT_ID` (frontend). Without it the Google
+  button is hidden and `/api/auth/google` returns 401.
 - Only the MIT taxonomy data is in scope. CSET/GMF classifications, the
   mitigation crosswalk, and entity-graph data are deferred; don't assume
   models or routes exist for them.
