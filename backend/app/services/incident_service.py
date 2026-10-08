@@ -1,7 +1,7 @@
 from datetime import date
 
 from sqlalchemy import Select, func, or_, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.incident_model import Incident
 from app.models.mit_classification_model import MitClassification
@@ -37,20 +37,28 @@ class IncidentService:
             date_to=date_to,
         )
 
-        total = self.db.scalar(
-            select(func.count()).select_from(query.subquery())
-        )
-
-        incidents = (
-            self.db.scalars(
-                query.options(selectinload(Incident.classifications))
+        # One round trip: the window count gives the total before LIMIT, and
+        # joinedload with LIMIT makes SQLAlchemy page the incidents in a
+        # subquery and join their classifications outside it, so the limit
+        # still counts incidents rather than classification rows.
+        rows = (
+            self.db.execute(
+                query.add_columns(func.count().over().label("total"))
+                .options(joinedload(Incident.classifications))
                 .order_by(Incident.incident_date.desc(), Incident.incident_id.desc())
                 .limit(limit)
                 .offset(offset)
             )
+            .unique()
             .all()
         )
-        return list(incidents), total or 0
+        if rows:
+            return [incident for incident, _ in rows], rows[0].total
+        if offset == 0:
+            return [], 0
+        # Past the last page there are no rows to carry the total.
+        total = self.db.scalar(select(func.count()).select_from(query.subquery()))
+        return [], total or 0
 
     def get_trend(
         self,
@@ -82,13 +90,20 @@ class IncidentService:
         return [(int(row_year), count) for row_year, count in rows]
 
     def get_incident(self, incident_id: int) -> Incident | None:
-        return self.db.scalar(
-            select(Incident)
-            .where(Incident.incident_id == incident_id)
-            .options(
-                selectinload(Incident.classifications),
-                selectinload(Incident.reports),
+        # Both collections in one query. Joining two collections multiplies
+        # rows (classifications x reports), which is negligible for a single
+        # incident and cheaper than two extra round trips.
+        return (
+            self.db.execute(
+                select(Incident)
+                .where(Incident.incident_id == incident_id)
+                .options(
+                    joinedload(Incident.classifications),
+                    joinedload(Incident.reports),
+                )
             )
+            .unique()
+            .scalar_one_or_none()
         )
 
     def _apply_filters(
