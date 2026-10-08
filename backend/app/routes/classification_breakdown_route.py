@@ -18,8 +18,19 @@ def get_classification_breakdown_service(
 
 @router.get("/", response_model=ClassificationBreakdownResponse)
 def get_classification_breakdowns(
+    risk_domain: str | None = None,
+    risk_subdomain: str | None = None,
+    causal_entity: str | None = None,
+    timing: str | None = None,
+    intent: str | None = None,
     service: ClassificationBreakdownService = Depends(
         get_classification_breakdown_service
     ),
 ) -> ClassificationBreakdownResponse:
-    return service.get_breakdowns()
+    return service.get_breakdowns(
+        risk_domain=risk_domain,
+        risk_subdomain=risk_subdomain,
+        causal_entity=causal_entity,
+        timing=timing,
+        intent=intent,
+    )
