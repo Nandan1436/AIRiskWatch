@@ -1,0 +1,39 @@
+@reference "../../styles/global.css";
+
+.hero {
+  @apply pb-[30px] pt-11;
+}
+
+.hero h1 {
+  @apply my-3 text-[40px] font-extrabold leading-[1.08] tracking-[-0.035em];
+}
+
+.hero h1 span {
+  color: var(--accent);
+}
+
+.hero p {
+  @apply m-0 max-w-[560px] text-[15px] leading-[1.6] text-fg-dim;
+}
+
+.live {
+  @apply inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] text-fg-dim;
+  background: var(--surface);
+  border-color: var(--border-soft);
+}
+
+.liveDot {
+  @apply h-[7px] w-[7px] rounded-full;
+  background: var(--down);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--down) 25%, transparent);
+}
+
+@media (max-width: 900px) {
+  .hero {
+    @apply pt-8;
+  }
+
+  .hero h1 {
+    @apply text-[30px];
+  }
+}
