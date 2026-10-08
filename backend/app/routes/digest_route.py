@@ -4,10 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.routes.auth_dependencies import get_current_user
 from app.schemas.digest_schema import DigestMonthListResponse, DigestMonthResponse
 from app.services.digest_service import DigestService
 
-router = APIRouter(prefix="/api/digest", tags=["Digest"])
+# The digest is a members-only feature: every route needs a signed-in user.
+router = APIRouter(
+    prefix="/api/digest",
+    tags=["Digest"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def get_digest_service(db: Session = Depends(get_db)) -> DigestService:
