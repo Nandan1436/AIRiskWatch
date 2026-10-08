@@ -13,6 +13,7 @@ class SearchResultItem(BaseModel):
     title: str | None
     incident_date: date | None
     risk_domain: str | None
+    risk_subdomain: str | None
     similarity: float
 
 
