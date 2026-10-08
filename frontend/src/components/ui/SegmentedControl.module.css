@@ -1,0 +1,19 @@
+@reference "../../styles/global.css";
+
+.seg {
+  @apply inline-flex flex-none gap-0.5 rounded-[9px] border p-[3px] text-[12px];
+  background: var(--bg-2);
+  border-color: var(--border-soft);
+}
+
+.option {
+  @apply rounded-[7px] border-0 bg-transparent px-2.5 py-1 text-fg-dim;
+  cursor: pointer;
+}
+
+.optionActive {
+  composes: option;
+  background: var(--surface-2);
+  color: var(--fg);
+  font-weight: 600;
+}

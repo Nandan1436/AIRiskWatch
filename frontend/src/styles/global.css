@@ -1,56 +1,66 @@
 @import "tailwindcss";
 
+/* "Ink & Signal" theme, matching ui-mockups/v2/theme.css. */
 :root,
 [data-theme="dark"] {
-  --bg: #0a121c;
-  --bg-2: #0c1622;
-  --surface: #101e2e;
-  --surface-2: #14273a;
-  --border: #1e3550;
-  --border-soft: #16283c;
-  --fg: #eaf0f6;
-  --fg-dim: #9db0c4;
-  --fg-faint: #64798f;
-  --accent: #2ab3e6;
-  --accent-strong: #38bdf0;
-  --green: #6fb63c;
-  --link: #4cc2ed;
-  --link-hover: #7fd4f2;
-  --chart-grid: #1b3049;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
-  --shadow-pop: 0 20px 60px rgba(0, 0, 0, 0.5);
-  --scrim: rgba(6, 12, 20, 0.72);
+  --bg: #0a0e16;
+  --bg-2: #0d121c;
+  --surface: #121926;
+  --surface-2: #172031;
+  --border: #222d40;
+  --border-soft: #1a2333;
+  --fg: #eef1f6;
+  --fg-dim: #a0abbd;
+  --fg-faint: #6b778b;
+  --accent: #f5a524;
+  --accent-ink: #1a1205;
+  --accent-soft: rgba(245, 165, 36, 0.14);
+  --split-ink: #0d1118;
+  --data: #2dd4bf;
+  --data-soft: rgba(45, 212, 191, 0.14);
+  --up: #f87171;
+  --down: #4ade80;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.3);
+  --scrim: rgba(5, 8, 13, 0.6);
+
+  /* MIT risk domains 1-7 */
+  --d1: #a78bfa;
+  --d2: #4ade80;
+  --d3: #fbbf24;
+  --d4: #fb7185;
+  --d5: #f472b6;
+  --d6: #94a3b8;
+  --d7: #38bdf8;
 }
 
 [data-theme="light"] {
-  --bg: #edf1f5;
-  --bg-2: #e6edf3;
+  --bg: #f6f5f2;
+  --bg-2: #efede8;
   --surface: #ffffff;
-  --surface-2: #f4f7fa;
-  --border: #dce3eb;
-  --border-soft: #e9eef3;
-  --fg: #0c1826;
-  --fg-dim: #52657a;
-  --fg-faint: #8494a5;
-  --accent: #0a6fb0;
-  --accent-strong: #004081;
-  --green: #4c8f27;
-  --link: #0a6fb0;
-  --link-hover: #004081;
-  --chart-grid: #e4eaf0;
-  --shadow: 0 1px 2px rgba(16, 40, 70, 0.06), 0 10px 30px rgba(0, 64, 129, 0.07);
-  --shadow-pop: 0 24px 60px rgba(0, 64, 129, 0.16);
-  --scrim: rgba(230, 237, 243, 0.7);
-}
+  --surface-2: #f8f7f4;
+  --border: #e2ded6;
+  --border-soft: #ebe8e1;
+  --fg: #141a24;
+  --fg-dim: #555f6e;
+  --fg-faint: #8b93a0;
+  --accent: #c2410c;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(194, 65, 12, 0.1);
+  --split-ink: #ffffff;
+  --data: #0f766e;
+  --data-soft: rgba(15, 118, 110, 0.1);
+  --up: #dc2626;
+  --down: #16a34a;
+  --shadow: 0 1px 2px rgba(30, 25, 15, 0.05), 0 10px 30px rgba(30, 25, 15, 0.06);
+  --scrim: rgba(20, 26, 36, 0.35);
 
-:root {
-  --dom-malicious: #e0603a;
-  --dom-safety: #2aa7d8;
-  --dom-discrimination: #9168c9;
-  --dom-misinfo: #e0a32e;
-  --dom-privacy: #4fa35a;
-  --dom-hci: #c6608f;
-  --dom-socioecon: #7e93ad;
+  --d1: #7c3aed;
+  --d2: #16a34a;
+  --d3: #ca8a04;
+  --d4: #e11d48;
+  --d5: #db2777;
+  --d6: #64748b;
+  --d7: #0284c7;
 }
 
 @theme {
@@ -64,10 +74,10 @@
   --color-fg-dim: var(--fg-dim);
   --color-fg-faint: var(--fg-faint);
   --color-accent: var(--accent);
-  --color-accent-strong: var(--accent-strong);
-  --color-green: var(--green);
-  --color-link: var(--link);
-  --color-link-hover: var(--link-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-data: var(--data);
+  --color-up: var(--up);
+  --color-down: var(--down);
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -86,17 +96,22 @@ body {
 
 body {
   font-family: var(--font-sans);
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   background: var(--bg);
   color: var(--fg);
 }
 
 a {
-  color: var(--link);
+  color: inherit;
+  text-decoration: none;
 }
 
-a:hover {
-  color: var(--link-hover);
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 ::selection {
@@ -111,23 +126,5 @@ a:hover {
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-@keyframes growBar {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-@keyframes drawArea {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }

@@ -1,8 +1,10 @@
-export function LoadingSpinner() {
+import styles from "./Feedback.module.css";
+
+export function LoadingSpinner({ label = "Loading…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-3 py-16 text-[13px] text-fg-dim">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-accent" />
-      Loading…
+    <div className={styles.loading} role="status">
+      <span className={styles.spinner} />
+      {label}
     </div>
   );
 }

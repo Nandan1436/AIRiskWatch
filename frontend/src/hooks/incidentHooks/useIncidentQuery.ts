@@ -6,20 +6,32 @@ import {
 } from "../../services/incidentService";
 import type { IncidentListParams, IncidentTrendParams } from "../../interfaces";
 
-export function useIncidentsQuery(params: IncidentListParams) {
-  const { data, isLoading, error } = useQuery({
+export function useIncidentsQuery(params: IncidentListParams, enabled = true) {
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["incidents", params],
     queryFn: () => getIncidents(params),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
+    enabled,
   });
 
   return {
     incidents: data?.items ?? [],
     total: data?.total ?? 0,
     isLoading,
+    isFetching,
     error: error ? (error as Error).message : null,
   };
+}
+
+/** Number of incidents matching the filters (fetches a single row). */
+export function useIncidentCountQuery(params: Omit<IncidentListParams, "limit" | "offset">) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["incident-count", params],
+    queryFn: () => getIncidents({ ...params, limit: 1, offset: 0 }),
+    staleTime: 5 * 60_000,
+  });
+  return { count: data?.total, isLoading };
 }
 
 export function useIncidentDetailQuery(incidentId: number) {
@@ -41,7 +53,7 @@ export function useIncidentTrendQuery(params: IncidentTrendParams) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["incident-trend", params],
     queryFn: () => getIncidentTrend(params),
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 
   return {

@@ -18,7 +18,7 @@ export function SignInContainer() {
   return (
     <AuthCard
       title="Sign in"
-      subtitle="Sign in to manage your account and email preferences."
+      subtitle="Welcome back to AIRiskWatch."
       footer={
         <>
           No account yet? <Link to="/sign-up">Create one</Link>
@@ -55,7 +55,7 @@ export function SignInContainer() {
           error={fieldErrors.password}
         />
         {error && <ErrorMessage message={error} />}
-        <Button type="submit" disabled={isSubmitting || google.isSubmitting}>
+        <Button type="submit" block disabled={isSubmitting || google.isSubmitting}>
           {isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
       </form>

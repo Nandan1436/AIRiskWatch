@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { getClassificationBreakdowns } from "../../services/classificationBreakdownService";
+import type { ClassificationFilters } from "../../interfaces";
 
-export function useClassificationBreakdownQuery() {
+export function useClassificationBreakdownQuery(params: ClassificationFilters = {}) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["classification-breakdowns"],
-    queryFn: getClassificationBreakdowns,
+    queryKey: ["classification-breakdowns", params],
+    queryFn: () => getClassificationBreakdowns(params),
     staleTime: 10 * 60_000,
   });
 

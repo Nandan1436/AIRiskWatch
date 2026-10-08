@@ -1,0 +1,88 @@
+@reference "../../styles/global.css";
+
+.crumbs {
+  @apply flex flex-wrap items-center gap-1.5 pt-7 text-[12.5px] text-fg-faint;
+}
+
+.crumbs a:hover {
+  @apply text-fg;
+}
+
+.crumbs b {
+  @apply font-medium text-fg-dim;
+}
+
+.crumbs svg {
+  @apply h-[13px] w-[13px] flex-none;
+}
+
+.eyebrow {
+  @apply text-[11px] font-bold uppercase tracking-[.1em];
+  color: var(--accent);
+}
+
+.pageHead {
+  @apply flex items-end justify-between gap-10 pb-6 pt-2.5;
+}
+
+.pageHead h1 {
+  @apply mb-2 mt-1.5 text-[32px] font-bold leading-[1.1] tracking-[-0.035em];
+}
+
+.pageHead p {
+  @apply m-0 max-w-[720px] text-[14.5px] leading-[1.65] text-fg-dim;
+}
+
+.pageActions {
+  @apply flex flex-none flex-wrap gap-2;
+}
+
+.secHead {
+  @apply mb-4 mt-10 flex items-end justify-between gap-5;
+  /* Keeps anchored sections clear of the sticky navbar. */
+  scroll-margin-top: 80px;
+}
+
+.secHead h2 {
+  @apply mb-0 mt-1.5 text-[22px] font-bold tracking-[-0.02em];
+}
+
+.secHead p {
+  @apply mb-0 mt-1 text-[13.5px] text-fg-dim;
+}
+
+.secActions {
+  @apply flex flex-none flex-wrap items-center gap-2.5;
+}
+
+.footer {
+  @apply mt-16 border-t pb-[30px] pt-[22px] text-[12px] text-fg-faint;
+  border-color: var(--border-soft);
+}
+
+.footerInner {
+  @apply mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-10;
+}
+
+.footerLinks {
+  @apply flex flex-wrap gap-[18px];
+}
+
+.footerLinks a:hover {
+  @apply text-fg;
+}
+
+@media (max-width: 900px) {
+  .pageHead,
+  .secHead {
+    @apply flex-col items-start gap-4;
+  }
+
+  .pageHead h1 {
+    @apply text-[26px];
+  }
+
+  .footerInner {
+    @apply px-4;
+  }
+}

@@ -1,0 +1,74 @@
+@reference "../../styles/global.css";
+
+.stat {
+  @apply relative block overflow-hidden rounded-2xl border px-5 pb-3.5 pt-[18px] text-fg;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.stat::before {
+  content: "";
+  @apply absolute inset-x-0 top-0 h-[3px];
+  background: var(--c);
+  opacity: 0.9;
+}
+
+a.stat:hover {
+  border-color: color-mix(in srgb, var(--c) 60%, var(--border));
+  transform: translateY(-1px);
+}
+
+.head {
+  @apply flex flex-wrap items-center justify-between gap-2;
+}
+
+.label {
+  @apply flex items-center gap-2 text-[12px] font-semibold text-fg-dim;
+}
+
+.icon {
+  @apply grid h-7 w-7 flex-none place-items-center rounded-lg;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  color: var(--c);
+}
+
+.icon svg {
+  @apply h-[15px] w-[15px];
+}
+
+.value {
+  @apply mb-0.5 mt-3 text-[32px] font-bold tracking-[-0.03em] tabular-nums;
+}
+
+.valueText {
+  @apply mb-0.5 mt-4 text-[19px] font-bold leading-[1.25] tracking-[-0.02em];
+}
+
+.sub {
+  @apply text-[11.5px] leading-[1.4] text-fg-faint;
+}
+
+.foot {
+  @apply mt-1.5 flex items-end justify-between gap-2.5;
+}
+
+.badge {
+  @apply whitespace-nowrap rounded-full px-2 py-[3px] text-[11.5px] font-bold;
+}
+
+.toneUp {
+  color: var(--up);
+  background: color-mix(in srgb, var(--up) 14%, transparent);
+}
+
+.toneDown {
+  color: var(--down);
+  background: color-mix(in srgb, var(--down) 14%, transparent);
+}
+
+.toneNeutral {
+  color: var(--fg-dim);
+  background: var(--surface-2);
+}

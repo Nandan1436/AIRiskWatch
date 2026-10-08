@@ -32,21 +32,29 @@ class SearchService:
         self.db = db
         self.client = client
 
-    def retrieve(self, query: str, top_k: int) -> list[tuple[Incident, str | None, float]]:
+    def retrieve(self, query: str, top_k: int) -> list[tuple[Incident, str | None, str | None, float]]:
         query_vector = embed_text(query)
         distance = Incident.embedding.cosine_distance(query_vector)
         rows = self.db.execute(
-            select(Incident, MitClassification.risk_domain, distance.label("distance"))
+            select(
+                Incident,
+                MitClassification.risk_domain,
+                MitClassification.risk_subdomain,
+                distance.label("distance"),
+            )
             .outerjoin(MitClassification, MitClassification.incident_id == Incident.incident_id)
             .where(Incident.embedding.is_not(None))
             .order_by(distance)
             .limit(top_k)
         ).all()
-        return [(incident, domain, 1.0 - dist) for incident, domain, dist in rows]
+        return [
+            (incident, domain, subdomain, 1.0 - dist)
+            for incident, domain, subdomain, dist in rows
+        ]
 
     def rerank(
-        self, query: str, candidates: list[tuple[Incident, str | None, float]]
-    ) -> list[tuple[Incident, str | None, float]]:
+        self, query: str, candidates: list[tuple[Incident, str | None, str | None, float]]
+    ) -> list[tuple[Incident, str | None, str | None, float]]:
         """Order vector candidates with a query-aware cross-encoder.
 
         The tuple's similarity remains the first-stage cosine score for
@@ -55,7 +63,7 @@ class SearchService:
         """
         documents = [
             incident_embedding_input(incident.title, incident.description)
-            for incident, _, _ in candidates
+            for incident, _, _, _ in candidates
         ]
         try:
             relevance_scores = rerank(query, documents)
@@ -71,7 +79,7 @@ class SearchService:
         ]
 
     def _build_summary_prompt(
-        self, query: str, matches: list[tuple[Incident, str | None, float]]
+        self, query: str, matches: list[tuple[Incident, str | None, str | None, float]]
     ) -> tuple[str, str]:
         system = (
             "You are an assistant summarising AI incident database search results. "
@@ -89,7 +97,7 @@ class SearchService:
             "- Reply with ONLY the summary text, no JSON, no markdown headers."
         )
         lines = [f"User query: {query}\n", "Retrieved incidents:"]
-        for incident, domain, _ in matches:
+        for incident, domain, _, _ in matches:
             lines.append(
                 f"[#{incident.incident_id}] {_truncate(incident.title, 200)}\n"
                 f"  Domain: {domain or 'unclassified'}\n"
@@ -97,7 +105,7 @@ class SearchService:
             )
         return system, "\n".join(lines)
 
-    def summarize(self, query: str, matches: list[tuple[Incident, str | None, float]]) -> str:
+    def summarize(self, query: str, matches: list[tuple[Incident, str | None, str | None, float]]) -> str:
         if not matches:
             return "No matching incidents were found for this query."
         system, user = self._build_summary_prompt(query, matches)
@@ -129,8 +137,9 @@ class SearchService:
                 title=incident.title,
                 incident_date=incident.incident_date,
                 risk_domain=domain,
+                risk_subdomain=subdomain,
                 similarity=round(similarity, 4),
             )
-            for incident, domain, similarity in matches
+            for incident, domain, subdomain, similarity in matches
         ]
         return summary, results

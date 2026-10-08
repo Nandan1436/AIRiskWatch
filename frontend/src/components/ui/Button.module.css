@@ -1,0 +1,57 @@
+@reference "../../styles/global.css";
+
+.base {
+  @apply inline-flex items-center justify-center gap-2 whitespace-nowrap border font-semibold;
+  border-color: transparent;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.base:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.base svg {
+  @apply h-[15px] w-[15px] flex-none;
+}
+
+.sizeMd {
+  @apply rounded-[10px] px-4 py-2.5 text-[13.5px];
+}
+
+.sizeSm {
+  @apply rounded-lg px-[11px] py-1.5 text-[12.5px];
+}
+
+.variantPrimary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.variantPrimary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.variantGhost {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--fg);
+}
+
+.variantGhost:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.variantDanger {
+  background: color-mix(in srgb, var(--up) 12%, transparent);
+  border-color: color-mix(in srgb, var(--up) 30%, transparent);
+  color: var(--up);
+}
+
+.variantDanger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--up) 18%, transparent);
+}
+
+.block {
+  @apply w-full;
+}

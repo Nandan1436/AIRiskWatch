@@ -8,6 +8,7 @@ export interface SearchResultItem {
   title: string | null;
   incident_date: string | null;
   risk_domain: string | null;
+  risk_subdomain: string | null;
   similarity: number;
 }
 

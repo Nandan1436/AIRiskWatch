@@ -8,7 +8,7 @@ export function GuestRoute() {
   if (isLoading) return null;
   if (isAuthenticated) {
     const from = (location.state as { from?: Location } | null)?.from?.pathname;
-    return <Navigate to={from ?? "/incidents"} replace />;
+    return <Navigate to={from ?? "/"} replace />;
   }
   return <Outlet />;
 }

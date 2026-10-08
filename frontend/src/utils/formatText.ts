@@ -35,3 +35,29 @@ export function formatIncidentDate(iso: string | null): string {
   ];
   return `${MONTHS[mo - 1]} ${d}, ${y}`;
 }
+
+/** Organization names are stored as slugs ("openai", "unknown-bank"). */
+export function formatOrgName(slug: string): string {
+  return decodeEntities(slug)
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function isNamedOrg(slug: string | null | undefined): slug is string {
+  return typeof slug === "string" && slug !== "" && slug !== "unknown" && !slug.startsWith("unknown-");
+}
+
+/** First named organization in a list, if any. */
+export function firstNamedOrg(orgs: string[] | null | undefined): string | null {
+  const named = orgs?.find(isNamedOrg);
+  return named ? formatOrgName(named) : null;
+}
+
+export function formatPercent(part: number, whole: number): string {
+  if (!whole) return "0%";
+  return `${Math.round((part / whole) * 100)}%`;
+}
+
+export function pluralize(count: number, noun: string, plural = `${noun}s`): string {
+  return `${count.toLocaleString()} ${count === 1 ? noun : plural}`;
+}

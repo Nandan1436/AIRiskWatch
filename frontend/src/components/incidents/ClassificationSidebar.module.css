@@ -1,0 +1,68 @@
+@reference "../../styles/global.css";
+
+.side {
+  @apply rounded-2xl border px-[22px] py-5;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.side h4 {
+  @apply mb-3 mt-0 text-[11px] font-bold uppercase tracking-[.08em] text-fg-faint;
+}
+
+.side .causalHead {
+  @apply mt-5;
+}
+
+.cls {
+  @apply mb-2 block rounded-xl border px-3.5 py-3 text-fg;
+  background: var(--bg-2);
+  border-color: var(--border-soft);
+}
+
+a.cls:hover {
+  border-color: var(--border);
+}
+
+.clsStatic {
+  composes: cls;
+}
+
+.key {
+  @apply flex items-center justify-between text-[11px] text-fg-faint;
+}
+
+.key svg {
+  @apply h-3.5 w-3.5;
+}
+
+.value {
+  @apply mt-1 flex min-w-0 items-center gap-2 text-[13.5px] font-semibold leading-[1.35];
+}
+
+.value svg {
+  @apply h-3.5 w-3.5 flex-none;
+}
+
+.causal3 {
+  @apply grid grid-cols-3 gap-2;
+}
+
+.causal3 .cls {
+  @apply m-0 min-w-0 px-3 py-2.5;
+}
+
+.causal3 .value {
+  @apply flex-col items-start gap-1 text-[12.5px];
+  overflow-wrap: anywhere;
+}
+
+.divider {
+  @apply my-5 border-0 border-t;
+  border-color: var(--border-soft);
+}
+
+.none {
+  @apply m-0 text-[13px] text-fg-dim;
+}

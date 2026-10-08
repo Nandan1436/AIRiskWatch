@@ -1,0 +1,57 @@
+@reference "../../styles/global.css";
+
+.pager {
+  @apply mt-[18px] flex flex-wrap items-center justify-between gap-4 text-[12.5px] text-fg-dim;
+}
+
+.pager b {
+  @apply font-semibold text-fg;
+}
+
+.pages {
+  @apply flex flex-wrap items-center gap-1;
+}
+
+.page {
+  @apply grid h-8 min-w-8 place-items-center rounded-lg border px-[9px] font-medium tabular-nums;
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+
+.page:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--fg-faint);
+}
+
+.page:disabled {
+  @apply cursor-default opacity-45;
+}
+
+.page svg {
+  @apply h-[15px] w-[15px];
+}
+
+.pageActive {
+  composes: page;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.pageActive:hover:not(:disabled) {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.gap {
+  @apply min-w-[18px] text-center;
+}
+
+@media (max-width: 600px) {
+  .pager {
+    @apply justify-center;
+  }
+}

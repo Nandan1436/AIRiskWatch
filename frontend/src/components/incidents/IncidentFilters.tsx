@@ -1,142 +1,161 @@
-import type { IncidentFilterState } from "../../hooks/incidentHooks/useFilterIncidents";
-import type { RiskDomain } from "../../interfaces";
-import { decodeEntities } from "../../utils/formatText";
+import { Filter, Search, X } from "lucide-react";
+import { MIT_CAUSAL, MIT_DOMAINS } from "../../constants/mitTaxonomy";
+import { Chip, SelectField } from "../ui";
+import {
+  CAUSAL_KEYS,
+  SINCE_OPTIONS,
+  hasActiveFilters,
+  type IncidentUrlFilters,
+} from "../../utils/incidentFilters";
+import {
+  domainColor,
+  findCausalCategory,
+  findCausalDimension,
+  findDomainByNumber,
+  findSubdomainByCode,
+} from "../../utils/taxonomy";
 import styles from "./IncidentFilters.module.css";
 
 interface IncidentFiltersProps {
-  filters: IncidentFilterState;
-  riskDomains: RiskDomain[];
-  onFilterChange: (next: Partial<IncidentFilterState>) => void;
+  filters: IncidentUrlFilters;
+  onChange: (next: Partial<IncidentUrlFilters>) => void;
+  onClear: () => void;
 }
 
-export function IncidentFilters({
-  filters,
-  riskDomains,
-  onFilterChange,
-}: IncidentFiltersProps) {
-  const selectedDomain = riskDomains.find(
-    (d) => d.name === filters.riskDomain,
-  );
-  const filtersActive = !!(
-    filters.search.trim() ||
-    filters.riskDomain ||
-    filters.riskSubdomain ||
-    filters.dateFrom ||
-    filters.dateTo
-  );
+const NO_CAUSE = { entity: "", intent: "", timing: "" };
+
+export function IncidentFilters({ filters, onChange, onClear }: IncidentFiltersProps) {
+  const domain = findDomainByNumber(filters.domain);
+  const subdomain = findSubdomainByCode(filters.sub)?.subdomain;
+  // The Cause select edits one causal dimension at a time; links from the
+  // taxonomy pages may set more, and those all show as chips below.
+  const causeDimension = CAUSAL_KEYS.find((d) => filters[d]);
+  const causeValue = causeDimension ? `${causeDimension}:${filters[causeDimension]}` : "";
+
+  function handleCauseChange(value: string) {
+    const [dimension, slug] = value.split(":");
+    onChange({ ...NO_CAUSE, ...(slug ? { [dimension]: slug } : {}) });
+  }
 
   return (
-    <div
-      className="mb-5 rounded-2xl border p-4"
-      style={{
-        background: "var(--surface)",
-        borderColor: "var(--border)",
-        boxShadow: "var(--shadow)",
-      }}
-    >
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="min-w-[220px] flex-[1_1_260px]">
-          <span className={styles.fieldLabel}>Search</span>
-          <span className="relative block">
-            <svg
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-faint"
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => onFilterChange({ search: e.target.value })}
-              placeholder="Search incident titles…"
-              className={`${styles.control} py-2.5 pl-[34px] pr-3 text-[13.5px]`}
-            />
-          </span>
+    <>
+      <div className={styles.bar}>
+        <label className={styles.search}>
+          <Search />
+          <input
+            type="search"
+            value={filters.q}
+            onChange={(e) => onChange({ q: e.target.value })}
+            placeholder="Search incident titles…"
+            aria-label="Search incident titles"
+          />
         </label>
-
-        <label className="min-w-[180px] flex-[0_1_210px]">
-          <span className={styles.fieldLabel}>Risk domain</span>
-          <select
-            value={filters.riskDomain}
-            onChange={(e) =>
-              onFilterChange({ riskDomain: e.target.value, riskSubdomain: "" })
-            }
-            className={`${styles.control} cursor-pointer px-3 py-2.5 text-[13.5px]`}
-          >
-            <option value="">All domains</option>
-            {riskDomains.map((d) => (
-              <option key={d.name} value={d.name}>
-                {decodeEntities(d.name)} ({d.incident_count})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="min-w-[180px] flex-[0_1_220px]">
-          <span className={styles.fieldLabel}>Risk subdomain</span>
-          <select
-            value={filters.riskSubdomain}
-            onChange={(e) =>
-              onFilterChange({ riskSubdomain: e.target.value })
-            }
-            disabled={!selectedDomain}
-            className={`${styles.control} cursor-pointer px-3 py-2.5 text-[13.5px]`}
-          >
-            <option value="">
-              {selectedDomain ? "All subdomains" : "Select a domain first"}
+        <SelectField
+          label="Domain"
+          value={filters.domain}
+          onChange={(e) => onChange({ domain: e.target.value, sub: "" })}
+        >
+          <option value="">All</option>
+          {MIT_DOMAINS.map((d) => (
+            <option key={d.number} value={d.number}>
+              {d.number} · {d.shortName}
             </option>
-            {selectedDomain?.subdomains.map((s) => (
-              <option key={s.name} value={s.name}>
-                {decodeEntities(s.name)} ({s.incident_count})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex-none">
-          <span className={styles.fieldLabel}>From</span>
-          <input
-            type="date"
-            value={filters.dateFrom}
-            onChange={(e) => onFilterChange({ dateFrom: e.target.value })}
-            className={`${styles.control} px-[11px] py-2 text-[13px]`}
-          />
-        </label>
-        <label className="flex-none">
-          <span className={styles.fieldLabel}>To</span>
-          <input
-            type="date"
-            value={filters.dateTo}
-            onChange={(e) => onFilterChange({ dateTo: e.target.value })}
-            className={`${styles.control} px-[11px] py-2 text-[13px]`}
-          />
-        </label>
-
-        {filtersActive && (
-          <button
-            type="button"
-            onClick={() =>
-              onFilterChange({
-                search: "",
-                riskDomain: "",
-                riskSubdomain: "",
-                dateFrom: "",
-                dateTo: "",
-              })
-            }
-            className={styles.clearBtn}
-          >
-            Clear
-          </button>
-        )}
+          ))}
+        </SelectField>
+        <SelectField
+          label="Subdomain"
+          value={filters.sub}
+          disabled={!domain}
+          onChange={(e) => onChange({ sub: e.target.value })}
+        >
+          <option value="">{domain ? "All" : "Pick a domain"}</option>
+          {domain?.subdomains.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.code} {s.name}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField label="Cause" value={causeValue} onChange={(e) => handleCauseChange(e.target.value)}>
+          <option value="">Any</option>
+          {MIT_CAUSAL.map((dim) => (
+            <optgroup key={dim.dimension} label={dim.label}>
+              {dim.categories.map((c) => (
+                <option key={c.slug} value={`${dim.dimension}:${c.slug}`}>
+                  {dim.label}: {c.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </SelectField>
+        <SelectField
+          label="Date"
+          value={filters.since}
+          onChange={(e) => onChange({ since: e.target.value as IncidentUrlFilters["since"] })}
+        >
+          {SINCE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </SelectField>
       </div>
-    </div>
+
+      {hasActiveFilters(filters) && (
+        <div className={styles.active}>
+          <Filter />
+          Active:
+          {filters.q && (
+            <RemovableChip label={`“${filters.q}”`} onRemove={() => onChange({ q: "" })} />
+          )}
+          {domain && (
+            <RemovableChip
+              label={`Domain ${domain.number} · ${domain.shortName}`}
+              color={domainColor(domain)}
+              onRemove={() => onChange({ domain: "", sub: "" })}
+            />
+          )}
+          {subdomain && (
+            <RemovableChip
+              label={`${subdomain.code} ${subdomain.name}`}
+              color={domainColor(domain)}
+              onRemove={() => onChange({ sub: "" })}
+            />
+          )}
+          {CAUSAL_KEYS.map((dimension) => {
+            const category = findCausalCategory(dimension, filters[dimension]);
+            return (
+              category && (
+                <RemovableChip
+                  key={dimension}
+                  label={`${findCausalDimension(dimension)?.label}: ${category.name}`}
+                  color="var(--data)"
+                  onRemove={() => onChange({ [dimension]: "" })}
+                />
+              )
+            );
+          })}
+          {filters.since && (
+            <RemovableChip
+              label={SINCE_OPTIONS.find((o) => o.value === filters.since)?.label ?? filters.since}
+              onRemove={() => onChange({ since: "" })}
+            />
+          )}
+          <button type="button" className={styles.clear} onClick={onClear}>
+            Clear all
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function RemovableChip({ label, color, onRemove }: { label: string; color?: string; onRemove: () => void }) {
+  return (
+    <button type="button" className={styles.chipBtn} onClick={onRemove} aria-label={`Remove filter ${label}`}>
+      <Chip color={color} solid={Boolean(color)} dot={Boolean(color)}>
+        {label}
+        <X className={styles.chipX} />
+      </Chip>
+    </button>
   );
 }

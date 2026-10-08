@@ -77,11 +77,12 @@ Both packages need `.env` copied from `.env.example`.
 - Auth (Phase 5, `phase5.md`): email/password and Google sign-in issue a
   Bearer JWT that the frontend keeps in localStorage (`airiskwatch-auth`, read
   only by `AuthContext` and `apiClient`). The site stays public; only
-  `/account` (`ProtectedRoute`) and `/admin/*` (`AdminRoute`) are guarded.
+  `/account` and `/digest/*` (`ProtectedRoute`) and `/admin/*` (`AdminRoute`)
+  are guarded.
   Backend guards are `get_current_user` / `require_admin` in
   `app/routes/auth_dependencies.py`. They reload the user on every request, so
-  role and deactivation changes apply at once. `/api/admin/*` and
-  `POST /api/ingestion/run` are admin-only. Admins are made with
+  role and deactivation changes apply at once. `/api/digest/*` needs a
+  signed-in user; `/api/admin/*` and `POST /api/ingestion/run` are admin-only. Admins are made with
   `scripts/create_admin.py`, never through the API.
 - The users table is `"user"`, which is a reserved word. Raw SQL must
   double-quote it: unquoted, `SELECT * FROM user` silently returns the current

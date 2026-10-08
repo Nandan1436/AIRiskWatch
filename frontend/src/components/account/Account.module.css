@@ -1,0 +1,123 @@
+@reference "../../styles/global.css";
+
+.me {
+  @apply rounded-2xl border px-[22px] py-[26px] text-center;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.bigAvatar {
+  @apply mx-auto mb-3.5 grid h-[76px] w-[76px] place-items-center rounded-full text-[30px] font-extrabold;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 6px var(--accent-soft);
+}
+
+.me h2 {
+  @apply m-0 text-[18px];
+}
+
+.me p {
+  @apply mb-3.5 mt-1 break-all text-[13px] text-fg-dim;
+}
+
+.sideNav {
+  @apply rounded-2xl border p-1.5;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.sideNav button {
+  @apply flex w-full items-center gap-2.5 rounded-[9px] border-0 bg-transparent px-3 py-2.5 text-[13.5px] font-medium;
+  color: var(--up);
+  cursor: pointer;
+}
+
+.sideNav button:hover {
+  background: var(--surface-2);
+}
+
+.sideNav svg {
+  @apply h-4 w-4;
+}
+
+.row {
+  @apply grid grid-cols-[200px_1fr_auto] items-center gap-4 border-t py-4 text-[13.5px];
+  border-color: var(--border-soft);
+}
+
+.key {
+  @apply flex items-center gap-[9px] text-fg-dim;
+}
+
+.key svg {
+  @apply h-4 w-4;
+}
+
+.value {
+  @apply flex min-w-0 flex-wrap items-center gap-1.5;
+  overflow-wrap: anywhere;
+}
+
+.action {
+  @apply flex justify-end;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[12px] font-semibold;
+  background: var(--surface-2);
+  border-color: var(--border-soft);
+}
+
+.badge svg {
+  @apply h-3.5 w-3.5;
+}
+
+.input {
+  @apply w-full max-w-[260px] rounded-lg border px-2.5 py-1.5 text-[13.5px] text-fg outline-none;
+  background: var(--bg-2);
+  border-color: var(--border);
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.inputError {
+  composes: input;
+  border-color: var(--up);
+}
+
+.fieldError {
+  @apply w-full text-[12px];
+  color: var(--up);
+}
+
+.pref {
+  @apply grid grid-cols-[1fr_auto] items-center gap-4 border-t py-4;
+  border-color: var(--border-soft);
+}
+
+.pref b {
+  @apply text-[13.5px];
+}
+
+.pref p {
+  @apply mb-0 mt-[3px] text-[12.5px] text-fg-dim;
+}
+
+@media (max-width: 700px) {
+  .row {
+    @apply grid-cols-[1fr_auto] gap-x-3 gap-y-1.5;
+  }
+
+  .key {
+    @apply col-span-2;
+  }
+
+  .value {
+    @apply col-start-1;
+  }
+}

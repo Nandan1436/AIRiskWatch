@@ -1,0 +1,343 @@
+@reference "../../styles/global.css";
+
+/* ---------- hero (domain / subdomain / causal pages) ---------- */
+.hero {
+  @apply mt-3.5 grid grid-cols-[1.4fr_1fr] gap-9 rounded-2xl border border-t-4 px-7 py-[26px];
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 9%, var(--surface)), var(--surface) 70%);
+  border-color: var(--border);
+  border-top-color: var(--c);
+  box-shadow: var(--shadow);
+}
+
+.tag {
+  @apply inline-flex flex-wrap items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[.06em];
+  color: var(--c);
+}
+
+.tag svg {
+  @apply h-3.5 w-3.5;
+}
+
+.tag a {
+  @apply underline;
+}
+
+.heroTitle {
+  @apply mb-3 mt-2.5 flex items-baseline gap-3 text-[32px] font-bold leading-[1.1] tracking-[-0.035em];
+}
+
+.heroTitle svg {
+  @apply h-[30px] w-[30px] flex-none self-center;
+  color: var(--c);
+}
+
+.heroNumber {
+  color: var(--c);
+}
+
+.definition {
+  @apply m-0 text-[14.5px] leading-[1.7] text-fg-dim;
+}
+
+.definition b {
+  @apply text-fg;
+}
+
+.chipRow {
+  @apply mt-4 flex flex-wrap items-center gap-2;
+}
+
+.chipRow > span:first-child {
+  @apply text-[12px] text-fg-faint;
+}
+
+.kpis {
+  @apply flex flex-wrap content-start gap-x-[30px] gap-y-5;
+}
+
+.kpi {
+  @apply min-w-[120px];
+}
+
+.kpi b {
+  @apply block text-[26px] tracking-[-0.02em] tabular-nums;
+}
+
+.kpi span {
+  @apply text-[11.5px] text-fg-faint;
+}
+
+.kpiUp {
+  color: var(--up);
+}
+
+.kpiDown {
+  color: var(--down);
+}
+
+/* ---------- taxonomy picker cards ---------- */
+.pickers {
+  @apply mb-[34px] grid grid-cols-3 gap-3.5;
+}
+
+.picker {
+  @apply flex items-start gap-3.5 rounded-2xl border px-5 py-[18px] text-fg;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+a.picker:hover {
+  border-color: var(--accent);
+}
+
+.pickerIcon {
+  @apply grid h-[38px] w-[38px] flex-none place-items-center rounded-[10px];
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.pickerIconData {
+  composes: pickerIcon;
+  background: var(--data-soft);
+  color: var(--data);
+}
+
+.pickerIconMuted {
+  composes: pickerIcon;
+  background: var(--surface-2);
+  color: var(--fg-faint);
+}
+
+.picker h3 {
+  @apply mb-1 mt-0 flex flex-wrap items-center gap-2 text-[15px];
+}
+
+.picker p {
+  @apply m-0 text-[12.5px] leading-[1.5] text-fg-dim;
+}
+
+.pickerMeta {
+  @apply mt-2 text-[11.5px] text-fg-faint;
+}
+
+.pickerSoon {
+  composes: picker;
+  @apply border-dashed bg-transparent shadow-none;
+}
+
+.badgeSoon {
+  @apply rounded-[5px] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[.05em] text-fg-faint;
+  background: var(--surface-2);
+}
+
+/* ---------- domain landscape ---------- */
+.legend {
+  @apply flex flex-wrap items-center justify-end gap-x-6 gap-y-2 text-[12px] text-fg-faint;
+}
+
+.scale {
+  @apply flex items-center gap-2;
+}
+
+.scale i {
+  @apply h-2 w-[90px] rounded;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--fg) 8%, var(--surface)),
+    color-mix(in srgb, var(--fg) 30%, var(--surface))
+  );
+}
+
+.land {
+  @apply flex flex-col gap-0.5 overflow-hidden rounded-[14px] border;
+  background: var(--bg);
+  border-color: var(--border);
+}
+
+.landRow {
+  @apply grid grid-cols-[250px_1fr] gap-0.5;
+}
+
+.domainCell {
+  @apply flex flex-col justify-between px-3.5 py-3 text-fg;
+  background: color-mix(in srgb, var(--c) 42%, var(--surface));
+}
+
+.domainCell:hover,
+.subCell:hover {
+  filter: brightness(1.12);
+}
+
+.domainName {
+  @apply flex items-baseline gap-2 text-[13.5px] font-bold;
+}
+
+.domainName span {
+  @apply opacity-70;
+}
+
+.domainMeta {
+  @apply mt-1 text-[11.5px];
+  color: color-mix(in srgb, var(--fg) 75%, transparent);
+}
+
+.domainGo {
+  @apply mt-2.5 inline-flex items-center gap-1 text-[11.5px] font-semibold;
+  color: color-mix(in srgb, var(--fg) 80%, transparent);
+}
+
+.domainGo svg {
+  @apply h-3.5 w-3.5;
+}
+
+.subs {
+  @apply flex flex-wrap gap-0.5;
+}
+
+.subCell {
+  @apply flex min-h-[58px] min-w-0 flex-col justify-between gap-1.5 px-3 py-2.5 text-fg;
+  flex: var(--w) 1 0;
+  background: color-mix(in srgb, var(--c) var(--i), var(--surface));
+}
+
+.subsMany .subCell {
+  flex-basis: 30%;
+}
+
+.subName {
+  @apply text-[12.5px] font-medium leading-[1.3];
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.subName b {
+  @apply mr-[5px] font-bold opacity-75;
+}
+
+.subCount {
+  @apply text-[11px];
+  color: color-mix(in srgb, var(--fg) 70%, transparent);
+}
+
+/* ---------- causal dimension cards ---------- */
+.causalGrid {
+  @apply grid grid-cols-3 gap-4;
+}
+
+.causalCard h3 {
+  @apply m-0 flex items-center gap-2 text-[16px];
+}
+
+.causalCard h3 svg {
+  @apply h-4 w-4 text-fg-faint;
+}
+
+.causalQuestion {
+  @apply mb-3.5 mt-1 text-[13px] text-fg-dim;
+}
+
+.option {
+  @apply -mx-2 block rounded-lg border-t px-2 py-2.5 text-fg;
+  border-color: var(--border-soft);
+}
+
+.option:hover {
+  background: var(--surface-2);
+}
+
+.optionHead {
+  @apply flex items-center justify-between text-[13px] font-semibold;
+}
+
+.optionHead span {
+  @apply inline-flex items-center gap-1.5 font-medium text-fg-faint;
+}
+
+.optionHead svg {
+  @apply h-3.5 w-3.5;
+}
+
+.option p {
+  @apply mb-[7px] mt-[3px] text-[12px] text-fg-dim;
+}
+
+.optionTrack {
+  @apply h-[5px] overflow-hidden rounded-[3px];
+  background: var(--bg-2);
+}
+
+.optionTrack div {
+  @apply h-full;
+  background: var(--data);
+}
+
+/* ---------- subdomain cards ---------- */
+.subCard {
+  @apply mt-2.5 grid grid-cols-[1fr_auto] gap-2.5 rounded-xl border px-4 py-3.5 text-fg;
+  background: var(--bg-2);
+  border-color: var(--border-soft);
+}
+
+.subCard:hover {
+  border-color: var(--c);
+}
+
+.subCard b {
+  @apply text-[13.5px];
+}
+
+.subCard p {
+  @apply mb-2 mt-1 text-[12px] leading-[1.5] text-fg-dim;
+}
+
+.subTrack {
+  @apply h-1.5 overflow-hidden rounded;
+  background: var(--surface-2);
+}
+
+.subTrack div {
+  @apply h-full;
+  background: var(--c);
+}
+
+.subCardCount {
+  @apply text-right text-[20px] font-bold tabular-nums;
+}
+
+.subCardCount span {
+  @apply block text-[11px] font-medium text-fg-faint;
+}
+
+@media (max-width: 1000px) {
+  .hero {
+    @apply grid-cols-1 gap-6 px-5;
+  }
+
+  .pickers,
+  .causalGrid {
+    @apply grid-cols-1;
+  }
+
+  .landRow {
+    @apply grid-cols-1;
+  }
+
+  .subsMany .subCell {
+    flex-basis: 45%;
+  }
+}
+
+@media (max-width: 600px) {
+  .heroTitle {
+    @apply text-[25px];
+  }
+
+  .kpi {
+    @apply min-w-[40%];
+  }
+
+  .subCell {
+    flex-basis: 100% !important;
+  }
+}

@@ -1,0 +1,41 @@
+@reference "../../styles/global.css";
+
+.chips {
+  @apply flex flex-wrap items-center gap-2.5;
+}
+
+.title {
+  @apply mb-3.5 mt-2.5 text-[30px] font-bold leading-[1.15] tracking-[-0.03em];
+}
+
+.facts {
+  @apply mb-[22px] flex flex-wrap gap-x-[22px] gap-y-2 text-[13px] text-fg-dim;
+}
+
+.facts span {
+  @apply inline-flex items-center gap-[7px];
+}
+
+.facts svg {
+  @apply h-4 w-4 flex-none;
+}
+
+.back {
+  @apply mt-6 inline-flex items-center gap-[7px] rounded-full border py-[7px] pl-2.5 pr-[13px] text-[12.5px] font-semibold text-fg-dim;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.back:hover {
+  @apply text-fg;
+}
+
+.back svg {
+  @apply h-3.5 w-3.5;
+}
+
+@media (max-width: 600px) {
+  .title {
+    @apply text-[23px];
+  }
+}

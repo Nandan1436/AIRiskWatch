@@ -1,28 +1,43 @@
-import type { ButtonHTMLAttributes, CSSProperties } from "react";
+import type { ButtonHTMLAttributes } from "react";
+import { Link, type LinkProps } from "react-router-dom";
+import styles from "./Button.module.css";
 
-type ButtonVariant = "primary" | "secondary" | "danger";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+type ButtonSize = "sm" | "md";
 
-const VARIANT_STYLES: Record<ButtonVariant, CSSProperties> = {
-  primary: { background: "var(--accent)", color: "#fff", borderColor: "transparent" },
-  secondary: { background: "var(--surface-2)", color: "var(--fg)", borderColor: "var(--border)" },
-  danger: {
-    background: "color-mix(in srgb, #e0603a 14%, var(--surface))",
-    color: "#e0603a",
-    borderColor: "color-mix(in srgb, #e0603a 40%, transparent)",
-  },
+const variantMap: Record<ButtonVariant, string> = {
+  primary: styles.variantPrimary,
+  secondary: styles.variantGhost,
+  ghost: styles.variantGhost,
+  danger: styles.variantDanger,
 };
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+const sizeMap: Record<ButtonSize, string> = {
+  sm: styles.sizeSm,
+  md: styles.sizeMd,
+};
+
+interface StyleProps {
   variant?: ButtonVariant;
+  size?: ButtonSize;
+  block?: boolean;
+  className?: string;
 }
 
-export function Button({ variant = "primary", className = "", style, ...props }: ButtonProps) {
+function buttonClass({ variant = "primary", size = "md", block, className = "" }: StyleProps) {
+  return `${styles.base} ${variantMap[variant]} ${sizeMap[size]} ${block ? styles.block : ""} ${className}`;
+}
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & StyleProps;
+
+export function Button({ variant, size, block, className, ...props }: ButtonProps) {
   return (
-    <button
-      type="button"
-      {...props}
-      className={`rounded-[10px] border px-4 py-[9px] text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-      style={{ ...VARIANT_STYLES[variant], ...style }}
-    />
+    <button type="button" {...props} className={buttonClass({ variant, size, block, className })} />
   );
+}
+
+type ButtonLinkProps = LinkProps & StyleProps;
+
+export function ButtonLink({ variant, size, block, className, ...props }: ButtonLinkProps) {
+  return <Link {...props} className={buttonClass({ variant, size, block, className })} />;
 }

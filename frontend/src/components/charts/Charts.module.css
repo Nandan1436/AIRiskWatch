@@ -1,0 +1,168 @@
+@reference "../../styles/global.css";
+
+/* ---------- bar list ---------- */
+.bars {
+  @apply flex flex-col;
+}
+
+.barRow {
+  @apply -mx-1.5 grid grid-cols-[190px_1fr_44px] items-center gap-2.5 rounded-lg px-1.5 py-[5px] text-[12.5px] text-fg;
+}
+
+a.barRow:hover {
+  background: var(--surface-2);
+}
+
+.barName {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-fg-dim;
+}
+
+.track {
+  @apply h-2 overflow-hidden rounded-md;
+  background: var(--bg-2);
+}
+
+.fill {
+  @apply h-full rounded-md;
+  background: var(--c);
+}
+
+.barValue {
+  @apply text-right font-mono tabular-nums;
+}
+
+/* ---------- split bar ---------- */
+.splitHead {
+  @apply mb-[7px] mt-4 flex justify-between gap-3 text-[12.5px] font-semibold;
+}
+
+.splitHead span {
+  @apply font-medium text-fg-faint;
+}
+
+.split {
+  @apply flex h-[22px] gap-0.5 overflow-hidden rounded-md text-[10.5px] font-bold;
+}
+
+.segment {
+  @apply block min-w-[3px] overflow-hidden text-ellipsis whitespace-nowrap pl-[7px] leading-[22px];
+  color: var(--split-ink);
+  background: var(--c);
+}
+
+a.segment:hover {
+  filter: brightness(1.1);
+}
+
+.note {
+  @apply mt-4 text-[12px] text-fg-faint;
+}
+
+.note b {
+  @apply text-fg;
+}
+
+/* ---------- year bars ---------- */
+.yearBars {
+  @apply mt-[18px] flex h-[230px] items-end gap-2.5 border-b pb-1;
+  border-color: var(--border-soft);
+}
+
+.yearBar {
+  @apply relative flex-1 rounded-t-[5px];
+  background: color-mix(in srgb, var(--c) 45%, transparent);
+}
+
+.yearBarLast {
+  composes: yearBar;
+  background: var(--c);
+}
+
+.yearBar span {
+  @apply absolute inset-x-0 -top-[18px] text-center text-[10.5px] text-fg-faint;
+}
+
+.yearLabels {
+  @apply mt-1.5 flex gap-2.5 font-mono text-[10.5px] text-fg-faint;
+}
+
+.yearLabels span {
+  @apply flex-1 text-center;
+}
+
+/* ---------- organizations ---------- */
+.org {
+  @apply flex items-center gap-3 border-t py-[9px] text-[13px];
+  border-color: var(--border-soft);
+}
+
+.org:first-child {
+  @apply border-t-0;
+}
+
+.orgAvatar {
+  @apply grid h-7 w-7 flex-none place-items-center rounded-lg text-[11px] font-bold text-fg-dim;
+  background: var(--surface-2);
+}
+
+.org b {
+  @apply ml-auto tabular-nums;
+}
+
+/* ---------- trend tooltip ---------- */
+.tooltip {
+  @apply rounded-lg border px-2.5 py-1.5;
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.tooltip div:first-child {
+  @apply text-[10.5px] text-fg-dim;
+}
+
+.tooltip div:last-child {
+  @apply text-[13px] font-bold text-fg;
+}
+
+@media (max-width: 600px) {
+  .barRow {
+    @apply grid-cols-[1fr_36px] gap-y-1;
+  }
+
+  .barName {
+    @apply col-span-2;
+  }
+
+  .yearBars,
+  .yearLabels {
+    @apply gap-1;
+  }
+
+  .yearBars {
+    @apply h-[180px];
+  }
+
+  .yearLabels span:nth-child(even) {
+    @apply invisible;
+  }
+}
+
+/* ---------- stack strip ---------- */
+.strip {
+  @apply mt-2.5 flex h-1.5 w-full gap-0.5 overflow-hidden rounded;
+}
+
+.strip span {
+  background: var(--c);
+}
+
+/* ---------- causal profile ---------- */
+.causalColumns {
+  @apply grid gap-x-7 md:grid-cols-3;
+}
+
+@media (min-width: 768px) {
+  .causalColumns .splitHead {
+    @apply mt-0;
+  }
+}

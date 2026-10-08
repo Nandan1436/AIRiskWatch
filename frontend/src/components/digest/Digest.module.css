@@ -1,0 +1,66 @@
+@reference "../../styles/global.css";
+
+.months {
+  @apply mb-5 flex flex-wrap gap-2;
+}
+
+.month {
+  @apply flex min-w-[120px] flex-col gap-0.5 rounded-xl border px-4 py-2.5 text-fg;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.month:hover {
+  border-color: var(--fg-faint);
+}
+
+.month b {
+  @apply text-[14px];
+}
+
+.month span {
+  @apply text-[11.5px] text-fg-faint;
+}
+
+.monthActive {
+  composes: month;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.monthActive:hover {
+  border-color: var(--accent);
+}
+
+.highlight {
+  @apply grid grid-cols-[26px_1fr] gap-2.5 border-t py-2.5 text-[13px] leading-[1.5] text-fg-dim;
+  border-color: var(--border-soft);
+}
+
+.highlight:first-child {
+  @apply border-t-0;
+}
+
+.highlight b {
+  @apply font-semibold text-fg;
+}
+
+.highlight a:hover b {
+  color: var(--accent);
+}
+
+.highlightNumber {
+  @apply grid h-6 w-6 place-items-center rounded-[7px] text-[12px] font-bold;
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+.highlightMeta {
+  @apply mt-0.5 block text-[12px] text-fg-faint;
+}
+
+@media (max-width: 600px) {
+  .month {
+    @apply min-w-0 flex-1 basis-[45%];
+  }
+}

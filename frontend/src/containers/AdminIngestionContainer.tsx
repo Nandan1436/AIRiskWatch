@@ -11,7 +11,7 @@ export function AdminIngestionContainer() {
         title="Run ingestion now"
         description="Scrapes the configured news sources for AI-related articles from the lookback window, filters them with the LLM, and creates or attaches incidents. This spends LLM quota and can take several minutes."
       >
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <Button onClick={run} disabled={isRunning}>
             {isRunning ? "Running…" : "Run ingestion"}
           </Button>

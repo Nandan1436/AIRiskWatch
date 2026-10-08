@@ -1,18 +1,62 @@
 @reference "../../styles/global.css";
 
-.card {
+.row {
+  @apply grid grid-cols-[4px_1fr_auto] gap-[18px] rounded-2xl border py-[15px] pl-0 pr-5 text-fg;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 17px 20px;
+  border-color: var(--border);
   box-shadow: var(--shadow);
-  display: flex;
-  gap: 18px;
-  align-items: flex-start;
-  transition: border-color 0.16s ease, transform 0.16s ease;
+  transition: transform 0.15s, border-color 0.15s;
 }
 
-.card:hover {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+.row:hover {
+  border-color: var(--accent);
   transform: translateY(-1px);
+}
+
+.rowCompact {
+  composes: row;
+  @apply py-[11px] pr-4;
+}
+
+.bar {
+  @apply rounded-r;
+  background: var(--c);
+}
+
+.title {
+  @apply mb-[7px] mt-0 text-[14.5px] font-semibold leading-[1.4] tracking-[-0.01em];
+}
+
+.rowCompact .title {
+  @apply mb-[5px] text-[13.5px];
+}
+
+.meta {
+  @apply flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[12px] text-fg-faint;
+}
+
+.metaItem {
+  @apply inline-flex items-center gap-[5px];
+}
+
+.metaItem svg {
+  @apply h-[13px] w-[13px];
+}
+
+.go {
+  @apply h-4 w-4 self-center text-fg-faint;
+}
+
+.list {
+  @apply flex flex-col gap-2;
+}
+
+@media (max-width: 600px) {
+  .row {
+    @apply gap-3 pr-3;
+  }
+
+  .go {
+    @apply hidden;
+  }
 }

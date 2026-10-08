@@ -1,30 +1,73 @@
 @reference "../../styles/global.css";
 
-.fieldLabel {
-  @apply mb-1.5 block text-[10.5px] font-semibold tracking-[.08em] uppercase text-fg-faint;
-}
-
-.control {
-  @apply w-full rounded-[10px] border text-fg outline-none;
+.bar {
+  @apply grid grid-cols-[1.6fr_repeat(4,1fr)] gap-2.5 rounded-2xl border p-4;
+  background: var(--surface);
   border-color: var(--border);
-  background: var(--bg-2);
-  font: inherit;
+  box-shadow: var(--shadow);
 }
 
-.control::placeholder {
+.search {
+  @apply flex min-w-0 items-center gap-2.5 rounded-[10px] border px-[13px] text-[13.5px] text-fg-faint;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.search:focus-within {
+  border-color: var(--accent);
+}
+
+.search svg {
+  @apply h-3.5 w-3.5 flex-none;
+}
+
+.search input {
+  @apply min-w-0 flex-1 border-0 bg-transparent py-[9px] text-fg outline-none;
+}
+
+.search input::placeholder {
   color: var(--fg-faint);
 }
 
-.control:disabled {
-  color: var(--fg-faint);
-  cursor: not-allowed;
+.active {
+  @apply mb-[18px] mt-3.5 flex flex-wrap items-center gap-2 text-[12.5px] text-fg-faint;
 }
 
-.clearBtn {
-  @apply flex-none rounded-[10px] border px-[15px] py-2.5 text-[12.5px] font-semibold;
-  border-color: var(--border);
-  background: transparent;
-  color: var(--fg-dim);
-  font: inherit;
+.active > svg {
+  @apply h-3.5 w-3.5;
+}
+
+.chipBtn {
+  @apply max-w-full border-0 bg-transparent p-0;
   cursor: pointer;
+}
+
+.chipX {
+  @apply ml-0.5 inline h-3 w-3 align-[-2px];
+}
+
+.clear {
+  @apply ml-1 border-0 bg-transparent p-0 text-[12.5px] font-medium;
+  color: var(--data);
+  cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  .bar {
+    @apply grid-cols-3;
+  }
+
+  .search {
+    @apply col-span-3;
+  }
+}
+
+@media (max-width: 700px) {
+  .bar {
+    @apply grid-cols-1 p-3;
+  }
+
+  .search {
+    @apply col-span-1;
+  }
 }

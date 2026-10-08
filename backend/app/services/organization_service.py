@@ -2,6 +2,7 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session
 
 from app.models.incident_model import Incident
+from app.models.mit_classification_model import MitClassification
 from app.schemas.organization_schema import (
     OrganizationLeaderboardResponse,
     OrganizationResponse,
@@ -12,8 +13,28 @@ class OrganizationService:
     def __init__(self, db: Session):
         self.db = db
 
-    def list_top_organizations(self, limit: int = 15) -> OrganizationLeaderboardResponse:
-        deployer_counts = self._unnest_counts(Incident.alleged_deployer)
+    def list_top_organizations(
+        self,
+        limit: int = 15,
+        risk_domain: str | None = None,
+        risk_subdomain: str | None = None,
+        causal_entity: str | None = None,
+        timing: str | None = None,
+        intent: str | None = None,
+    ) -> OrganizationLeaderboardResponse:
+        # Optional taxonomy filters, matched the same way as the incident list.
+        scope = [
+            Incident.classifications.any(column == value)
+            for column, value in {
+                MitClassification.risk_domain: risk_domain,
+                MitClassification.risk_subdomain: risk_subdomain,
+                MitClassification.causal_entity: causal_entity,
+                MitClassification.timing: timing,
+                MitClassification.intent: intent,
+            }.items()
+            if value
+        ]
+        deployer_counts = self._unnest_counts(Incident.alleged_deployer, scope)
 
         orgs = [
             OrganizationResponse(name=name, incident_count=count)
@@ -22,7 +43,7 @@ class OrganizationService:
         ]
         top_orgs = sorted(orgs, key=lambda o: o.incident_count, reverse=True)[:limit]
 
-        total_attributed, unattributed = self._attribution_stats()
+        total_attributed, unattributed = self._attribution_stats(scope)
         return OrganizationLeaderboardResponse(
             organizations=top_orgs,
             total_attributed_incidents=total_attributed,
@@ -32,11 +53,11 @@ class OrganizationService:
     def _is_named(self, org_column: ColumnElement) -> ColumnElement:
         return (org_column != "unknown") & (~org_column.like("unknown-%"))
 
-    def _unnest_counts(self, column) -> dict[str, int]:
+    def _unnest_counts(self, column, scope: list[ColumnElement]) -> dict[str, int]:
         org = func.unnest(column).label("org")
         subq = (
             select(Incident.incident_id.label("incident_id"), org)
-            .where(column.is_not(None))
+            .where(column.is_not(None), *scope)
             .subquery()
         )
         rows = self.db.execute(
@@ -46,11 +67,11 @@ class OrganizationService:
         ).all()
         return dict(rows)
 
-    def _attribution_stats(self) -> tuple[int, int]:
+    def _attribution_stats(self, scope: list[ColumnElement]) -> tuple[int, int]:
         deployer_pairs = select(
             Incident.incident_id.label("incident_id"),
             func.unnest(Incident.alleged_deployer).label("org"),
-        ).where(Incident.alleged_deployer.is_not(None)).subquery()
+        ).where(Incident.alleged_deployer.is_not(None), *scope).subquery()
 
         named_subq = (
             select(deployer_pairs.c.incident_id)
