@@ -20,7 +20,7 @@ export function IngestionSummaryCard({ summary }: { summary: IngestionRunSummary
 
   return (
     <Card title="Last run" description={STATUS_COPY[summary.status] ?? `Status: ${summary.status}`}>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
           <StatCard key={stat.label} label={stat.label} value={stat.value.toLocaleString()} />
         ))}

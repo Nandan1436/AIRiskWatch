@@ -9,6 +9,6 @@ export function AdminRoute() {
   if (!isAuthenticated) {
     return <Navigate to="/sign-in" state={{ from: location }} replace />;
   }
-  if (!isAdmin) return <Navigate to="/incidents" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
   return <Outlet />;
 }

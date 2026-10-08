@@ -15,7 +15,7 @@ export function GoogleSignInButton({ text, onCredential, onError }: GoogleSignIn
         text={text}
         theme={theme === "dark" ? "filled_black" : "outline"}
         shape="pill"
-        width="336"
+        width="280"
         onSuccess={(response) => onCredential(response.credential)}
         onError={onError}
       />

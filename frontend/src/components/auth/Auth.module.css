@@ -1,0 +1,89 @@
+@reference "../../styles/global.css";
+
+.auth {
+  @apply grid min-h-[calc(100vh-64px-140px)] grid-cols-[1fr_440px] items-center gap-[60px] py-10;
+  animation: riseIn 0.28s ease both;
+}
+
+.pitch h1 {
+  @apply mb-3.5 mt-3 text-[40px] font-bold leading-[1.1] tracking-[-0.035em];
+}
+
+.pitch h1 span {
+  color: var(--accent);
+}
+
+.pitch p {
+  @apply mb-[26px] mt-0 max-w-[480px] text-[15px] leading-[1.65] text-fg-dim;
+}
+
+.perk {
+  @apply mb-4 flex max-w-[470px] items-start gap-3.5;
+}
+
+.perkIcon {
+  @apply grid h-9 w-9 flex-none place-items-center rounded-[10px];
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.perkIcon svg {
+  @apply h-4 w-4;
+}
+
+.perk b {
+  @apply mb-0.5 block text-[14px];
+}
+
+.perk span {
+  @apply text-[13px] text-fg-dim;
+}
+
+.box {
+  @apply rounded-2xl border px-[30px] pb-[26px] pt-[30px];
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.box h2 {
+  @apply m-0 text-[22px] font-bold tracking-[-0.02em];
+}
+
+.sub {
+  @apply mb-[22px] mt-1 text-[13.5px] text-fg-dim;
+}
+
+.footer {
+  @apply mt-[18px] text-center text-[13px] text-fg-dim;
+}
+
+.footer a {
+  @apply font-medium;
+  color: var(--data);
+}
+
+.divider {
+  @apply my-[18px] flex items-center gap-3 text-[12px] text-fg-faint;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  @apply h-px flex-1;
+  background: var(--border);
+}
+
+@media (max-width: 900px) {
+  .auth {
+    @apply min-h-0 grid-cols-1 gap-8 py-6;
+  }
+
+  .pitch {
+    @apply hidden;
+  }
+
+  .box {
+    @apply mx-auto w-full max-w-[440px] px-5;
+  }
+}

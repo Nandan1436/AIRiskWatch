@@ -63,7 +63,7 @@ export function AdminDigestContainer() {
           </div>
 
           {digest.lastSend && (
-            <p className="text-[12.5px]" style={{ color: "var(--green)" }}>
+            <p className="text-[12.5px]" style={{ color: "var(--down)" }}>
               {digest.lastSend.test_to
                 ? `Test email sent to ${digest.lastSend.test_to}.`
                 : "Sending started in the background. Refresh the status below to follow progress."}

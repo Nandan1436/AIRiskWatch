@@ -72,7 +72,7 @@ export function SignUpContainer() {
           error={fieldErrors.confirmPassword}
         />
         {error && <ErrorMessage message={error} />}
-        <Button type="submit" disabled={isSubmitting || google.isSubmitting}>
+        <Button type="submit" block disabled={isSubmitting || google.isSubmitting}>
           {isSubmitting ? "Creating account…" : "Create account"}
         </Button>
       </form>
