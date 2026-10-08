@@ -11,6 +11,6 @@ export function useAuthRedirect() {
 
   return (auth: AuthResponse) => {
     login(auth);
-    navigate(from ?? "/incidents", { replace: true });
+    navigate(from ?? "/", { replace: true });
   };
 }

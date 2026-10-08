@@ -1,64 +1,86 @@
-import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useIncidentsQuery } from "./useIncidentQuery";
-import { useRiskDomainsQuery } from "../riskDomainHooks/useRiskDomainQuery";
 import { useDebouncedValue } from "../useDebouncedValue";
 import type { IncidentListParams } from "../../interfaces";
+import {
+  readFilters,
+  readPage,
+  toApiFilters,
+  type IncidentUrlFilters,
+} from "../../utils/incidentFilters";
 
-const LIMIT = 20;
+export const INCIDENT_PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 
-export interface IncidentFilterState {
-  search: string;
-  riskDomain: string;
-  riskSubdomain: string;
-  dateFrom: string;
-  dateTo: string;
+/**
+ * Current page from `?page=`, and a setter that keeps other params. After a
+ * page change it scrolls to the element with `scrollTargetId`, or the top.
+ */
+export function usePageParam(scrollTargetId?: string) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = readPage(searchParams);
+
+  function setPage(next: number) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next > 1) params.set("page", String(next));
+      else params.delete("page");
+      return params;
+    });
+    const target = scrollTargetId ? document.getElementById(scrollTargetId) : null;
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    else window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  return { page, offset: (page - 1) * INCIDENT_PAGE_SIZE, setPage };
 }
 
-const INITIAL_FILTERS: IncidentFilterState = {
-  search: "",
-  riskDomain: "",
-  riskSubdomain: "",
-  dateFrom: "",
-  dateTo: "",
-};
-
+/** Incident list driven by URL filters; any filter change resets to page 1. */
 export function useFilterIncidents() {
-  const [filters, setFilters] = useState<IncidentFilterState>(INITIAL_FILTERS);
-  const [offset, setOffset] = useState(0);
-  const debouncedSearch = useDebouncedValue(filters.search, SEARCH_DEBOUNCE_MS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = readFilters(searchParams);
+  const { page, offset, setPage } = usePageParam();
+  const debouncedQuery = useDebouncedValue(filters.q, SEARCH_DEBOUNCE_MS);
 
-  const params: IncidentListParams = useMemo(
-    () => ({
-      limit: LIMIT,
-      offset,
-      search: debouncedSearch || undefined,
-      risk_domain: filters.riskDomain || undefined,
-      risk_subdomain: filters.riskSubdomain || undefined,
-      date_from: filters.dateFrom || undefined,
-      date_to: filters.dateTo || undefined,
-    }),
-    [debouncedSearch, filters.riskDomain, filters.riskSubdomain, filters.dateFrom, filters.dateTo, offset],
-  );
+  const params: IncidentListParams = {
+    limit: INCIDENT_PAGE_SIZE,
+    offset,
+    ...toApiFilters({ ...filters, q: debouncedQuery }),
+  };
+  const { incidents, total, isLoading, isFetching, error } = useIncidentsQuery(params);
 
-  const { incidents, total, isLoading, error } = useIncidentsQuery(params);
-  const { riskDomains } = useRiskDomainsQuery();
+  function updateFilters(next: Partial<IncidentUrlFilters>) {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(next)) {
+          if (value) params.set(key, value);
+          else params.delete(key);
+        }
+        params.delete("page");
+        return params;
+      },
+      // Typing in the search box should not add a history entry per keystroke.
+      { replace: "q" in next },
+    );
+  }
 
-  function handleFilterChange(next: Partial<IncidentFilterState>) {
-    setFilters((prev) => ({ ...prev, ...next }));
-    setOffset(0);
+  function clearFilters() {
+    setSearchParams(new URLSearchParams());
   }
 
   return {
     incidents,
     total,
-    limit: LIMIT,
+    page,
     offset,
-    setOffset,
+    limit: INCIDENT_PAGE_SIZE,
+    setPage,
     filters,
-    handleFilterChange,
-    riskDomains,
+    updateFilters,
+    clearFilters,
     isLoading,
+    isFetching,
     error,
   };
 }

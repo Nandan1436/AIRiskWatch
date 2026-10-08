@@ -1,3 +1,5 @@
+import type { ClassificationFilters } from "./classificationBreakdown";
+
 export interface Organization {
   name: string;
   incident_count: number;
@@ -9,6 +11,6 @@ export interface OrganizationLeaderboardResponse {
   unattributed_incident_count: number;
 }
 
-export interface OrganizationParams {
+export interface OrganizationParams extends ClassificationFilters {
   limit?: number;
 }
