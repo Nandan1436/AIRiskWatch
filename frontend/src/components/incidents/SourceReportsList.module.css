@@ -1,42 +1,38 @@
 @reference "../../styles/global.css";
 
 .list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  @apply flex flex-col gap-2.5;
 }
 
 .row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border-soft);
-  color: var(--fg);
+  @apply grid grid-cols-[36px_1fr_auto] items-center gap-3.5 rounded-2xl border px-4 py-3.5 text-fg;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
 }
 
-.row:last-child {
-  border-bottom: none;
+a.row:hover {
+  border-color: var(--accent);
 }
 
-.row:hover {
+.icon {
+  @apply grid h-9 w-9 place-items-center rounded-[9px] text-fg-dim;
   background: var(--surface-2);
 }
 
-.toggleBtn {
-  margin-top: 12px;
-  padding: 8px 15px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--link);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
+.icon svg {
+  @apply h-4 w-4;
+}
+
+.title {
+  @apply mb-1 mt-0 text-[14px] font-semibold leading-[1.4];
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  @apply text-[12px] text-fg-faint;
+}
+
+.external {
+  @apply h-4 w-4 text-fg-faint;
 }
