@@ -1,54 +1,75 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import styles from "./Pagination.module.css";
+
 interface PaginationProps {
   offset: number;
   limit: number;
   total: number;
   onOffsetChange: (offset: number) => void;
+  noun?: string;
 }
 
-export function Pagination({
-  offset,
-  limit,
-  total,
-  onOffsetChange,
-}: PaginationProps) {
-  const hasPrev = offset > 0;
-  const hasNext = offset + limit < total;
-  const pageNum = Math.floor(offset / limit) + 1;
-  const pageCount = Math.max(1, Math.ceil(total / limit));
+/** First, last, and the current page's neighbours, with gaps in between. */
+function pageWindow(page: number, last: number): (number | "gap")[] {
+  const items: (number | "gap")[] = [];
+  for (let p = 1; p <= last; p++) {
+    if (p === 1 || p === last || Math.abs(p - page) <= 1) items.push(p);
+    else if (items[items.length - 1] !== "gap") items.push("gap");
+  }
+  return items;
+}
+
+export function Pagination({ offset, limit, total, onOffsetChange, noun = "incidents" }: PaginationProps) {
+  if (total <= limit) return null;
+  const page = Math.floor(offset / limit) + 1;
+  const last = Math.max(1, Math.ceil(total / limit));
+  const from = offset + 1;
+  const to = Math.min(total, offset + limit);
+  const goTo = (p: number) => onOffsetChange((p - 1) * limit);
 
   return (
-    <div className="mt-6 flex items-center justify-between border-t border-border-soft pt-5">
-      <div className="text-[12.5px] text-fg-dim">
-        Page{" "}
-        <span className="font-mono font-semibold text-fg">{pageNum}</span> of{" "}
-        <span className="font-mono font-semibold text-fg">{pageCount}</span>
-      </div>
-      <div className="flex gap-2">
+    <nav className={styles.pager} aria-label="Pagination">
+      <span>
+        Showing <b>{from.toLocaleString()}–{to.toLocaleString()}</b> of <b>{total.toLocaleString()}</b>{" "}
+        {noun}
+      </span>
+      <div className={styles.pages}>
         <button
           type="button"
-          disabled={!hasPrev}
-          onClick={() => onOffsetChange(Math.max(0, offset - limit))}
-          className="flex items-center gap-1.5 rounded-[10px] border border-border bg-surface px-4 py-2 text-[13px] font-semibold disabled:cursor-not-allowed disabled:text-fg-faint"
-          style={{ color: hasPrev ? "var(--fg)" : undefined }}
+          className={styles.page}
+          disabled={page === 1}
+          onClick={() => goTo(page - 1)}
+          aria-label="Previous page"
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Prev
+          <ChevronLeft />
         </button>
+        {pageWindow(page, last).map((p, i) =>
+          p === "gap" ? (
+            <span key={`gap-${i}`} className={styles.gap}>
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              className={p === page ? styles.pageActive : styles.page}
+              aria-current={p === page ? "page" : undefined}
+              onClick={() => goTo(p)}
+            >
+              {p}
+            </button>
+          ),
+        )}
         <button
           type="button"
-          disabled={!hasNext}
-          onClick={() => onOffsetChange(offset + limit)}
-          className="flex items-center gap-1.5 rounded-[10px] border border-border bg-surface px-4 py-2 text-[13px] font-semibold disabled:cursor-not-allowed disabled:text-fg-faint"
-          style={{ color: hasNext ? "var(--fg)" : undefined }}
+          className={styles.page}
+          disabled={page === last}
+          onClick={() => goTo(page + 1)}
+          aria-label="Next page"
         >
-          Next
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+          <ChevronRight />
         </button>
       </div>
-    </div>
+    </nav>
   );
 }

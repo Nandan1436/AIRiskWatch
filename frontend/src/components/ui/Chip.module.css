@@ -1,0 +1,28 @@
+@reference "../../styles/global.css";
+
+.chip {
+  @apply inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[11.5px] font-semibold;
+  color: var(--c, var(--fg-dim));
+  border-color: color-mix(in srgb, var(--c, var(--fg-dim)) 40%, transparent);
+}
+
+.solid {
+  background: color-mix(in srgb, var(--c, var(--fg-dim)) 14%, transparent);
+}
+
+a.chip:hover {
+  border-color: var(--c, var(--fg-dim));
+}
+
+.chip svg {
+  @apply h-3.5 w-3.5 flex-none;
+}
+
+.dot {
+  @apply inline-block h-[7px] w-[7px] flex-none rounded-full;
+  background: var(--c, var(--fg-dim));
+}
+
+.truncate {
+  @apply min-w-0 overflow-hidden text-ellipsis;
+}

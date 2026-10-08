@@ -1,0 +1,59 @@
+@reference "../../styles/global.css";
+
+.card {
+  @apply rounded-2xl border;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.padded {
+  @apply px-[22px] py-5;
+}
+
+.head {
+  @apply flex items-start justify-between gap-3;
+}
+
+.title {
+  @apply m-0 text-[15px] font-bold tracking-[-0.01em] text-fg;
+}
+
+.description {
+  @apply mt-[3px] text-[12.5px] text-fg-dim;
+}
+
+.body {
+  @apply mt-4;
+}
+
+/* Scrolling card: its content never sets the height of the row it sits in. */
+.scroll {
+  @apply flex flex-col;
+}
+
+.scrollBody {
+  @apply mt-4 max-h-[360px] min-h-0 flex-1 overflow-y-auto pr-1.5;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Side by side (lg grids): size containment gives the card no intrinsic
+   height, so the grid row takes its sibling's height and this card
+   stretches to it, scrolling the rest. Stacked on small screens it is
+   capped by max-height instead. */
+@media (min-width: 1024px) {
+  .scroll {
+    contain: size;
+  }
+
+  .scrollBody {
+    @apply max-h-none;
+  }
+}
+
+@media (max-width: 600px) {
+  .padded {
+    @apply px-4 py-4;
+  }
+}

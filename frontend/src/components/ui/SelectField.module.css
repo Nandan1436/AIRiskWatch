@@ -1,0 +1,35 @@
+@reference "../../styles/global.css";
+
+.select {
+  @apply relative flex min-w-0 items-center gap-2 rounded-[10px] border pl-3 text-[13px];
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.select:focus-within {
+  border-color: var(--accent);
+}
+
+.label {
+  @apply flex-none text-fg-faint;
+}
+
+.control {
+  @apply min-w-0 flex-1 appearance-none border-0 bg-transparent py-[9px] pr-8 text-fg outline-none;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.control:disabled {
+  @apply cursor-not-allowed text-fg-faint;
+}
+
+.control option,
+.control optgroup {
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.chevron {
+  @apply pointer-events-none absolute right-3 h-3.5 w-3.5 text-fg-faint;
+}

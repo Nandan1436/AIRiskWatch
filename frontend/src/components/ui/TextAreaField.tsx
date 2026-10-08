@@ -17,11 +17,11 @@ export function TextAreaField({ label, error, id, ...textareaProps }: TextAreaFi
         className="resize-y rounded-[10px] border px-3 py-[9px] text-[13.5px] text-fg outline-none transition-colors focus:border-accent"
         style={{
           background: "var(--surface-2)",
-          borderColor: error ? "#e0603a" : "var(--border)",
+          borderColor: error ? "var(--up)" : "var(--border)",
         }}
         aria-invalid={error ? true : undefined}
       />
-      {error && <span className="text-[12px]" style={{ color: "#e0603a" }}>{error}</span>}
+      {error && <span className="text-[12px]" style={{ color: "var(--up)" }}>{error}</span>}
     </label>
   );
 }
