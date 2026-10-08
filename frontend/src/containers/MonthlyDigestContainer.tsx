@@ -1,11 +1,18 @@
-import { Link, Navigate } from "react-router-dom";
+import { useState } from "react";
+import { Navigate } from "react-router-dom";
+import { Bot, FileWarning, LayoutGrid, Target } from "lucide-react";
+import { MIT_DOMAINS } from "../constants/mitTaxonomy";
 import type { DigestMonth } from "../interfaces";
 import { useDigestMonth, useDigestMonths } from "../hooks";
-import { RiskDomainBarChart } from "../components/charts";
-import { IncidentCard } from "../components/incidents";
-import { ErrorMessage, LoadingSpinner, StatCard } from "../components/ui";
-import { decodeEntities } from "../utils/formatText";
+import { BarList } from "../components/charts";
+import { DigestHighlights, DigestMonthTabs } from "../components/digest";
+import { IncidentList } from "../components/incidents";
+import { PageHead, SectionHead } from "../components/layout";
+import { Card, EmptyState, ErrorMessage, LoadingSpinner, Pagination, StatCard } from "../components/ui";
 import { formatDigestMonth, toYearMonth } from "../utils/digestMonth";
+import { domainColor, findDomainByName, taxonomyPaths } from "../utils/taxonomy";
+
+const PAGE_SIZE = 20;
 
 export function MonthlyDigestContainer({ yearMonth }: { yearMonth?: string }) {
   const { months, isLoading: monthsLoading, error: monthsError } = useDigestMonths();
@@ -14,101 +21,121 @@ export function MonthlyDigestContainer({ yearMonth }: { yearMonth?: string }) {
   if (monthsLoading) return <LoadingSpinner />;
   if (monthsError) return <ErrorMessage message={monthsError} />;
   if (!yearMonth && months.length > 0) {
-    return <Navigate to={`/digest/${toYearMonth(months[0].month)}`} replace />;
+    // Open the latest month that has incidents (the current one may be empty so far).
+    const latest = months.find((m) => m.total > 0) ?? months[0];
+    return <Navigate to={`/digest/${toYearMonth(latest.month)}`} replace />;
   }
 
-  return (
-    <div>
-      <nav className="mb-8 flex flex-wrap gap-2">
-        {months.map((m) => {
-          const ym = toYearMonth(m.month);
-          const active = ym === yearMonth;
-          return (
-            <Link
-              key={ym}
-              to={`/digest/${ym}`}
-              className="flex items-center gap-2 rounded-full border px-4 py-[7px] text-[12.5px] font-medium transition-colors"
-              style={{
-                background: active ? "var(--accent)" : "var(--surface)",
-                borderColor: active ? "transparent" : "var(--border-soft)",
-                color: active ? "#fff" : "var(--fg-dim)",
-              }}
-            >
-              {formatDigestMonth(m.month, "short")}
-              <span className="font-mono text-[11px] tabular-nums opacity-80">{m.total}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {isLoading && <LoadingSpinner />}
-      {error && <ErrorMessage message={error} />}
-      {digest && <DigestMonthView digest={digest} />}
-    </div>
-  );
-}
-
-function DigestMonthView({ digest }: { digest: DigestMonth }) {
-  const monthLabel = formatDigestMonth(digest.month);
-  const topDomain = digest.domain_counts.find((d) => d.risk_domain !== "Unclassified");
-
-  if (digest.total === 0) {
-    return (
-      <p className="py-16 text-center text-[13px] text-fg-dim">
-        No AI incidents were reported in {monthLabel}.
-      </p>
-    );
-  }
+  const monthLabel = yearMonth ? formatDigestMonth(`${yearMonth}-01`) : "";
 
   return (
     <>
-      <section className="mb-10">
-        <div className="mb-[7px] text-[10.5px] font-semibold uppercase tracking-[.09em] text-accent">
-          {monthLabel}
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <StatCard
-            label="Incidents reported"
-            value={digest.total.toLocaleString()}
-            hint={`Previous month: ${digest.previous_total}`}
-          />
-          <StatCard
-            label="Top risk domain"
-            value={topDomain ? topDomain.count.toLocaleString() : "–"}
-            hint={topDomain ? decodeEntities(topDomain.risk_domain) : "No classified incidents"}
-          />
-          <StatCard
-            label="Risk domains involved"
-            value={digest.domain_counts.filter((d) => d.risk_domain !== "Unclassified").length.toString()}
-            hint="Distinct MIT taxonomy domains"
-          />
-        </div>
-      </section>
-
-      <section className="mb-10">
-        <RiskDomainBarChart
-          riskDomains={digest.domain_counts.map((d) => ({
-            name: d.risk_domain,
-            incident_count: d.count,
-            subdomains: [],
-          }))}
-        />
-      </section>
-
-      <section>
-        <div className="mb-3.5 flex items-center justify-between">
-          <div className="text-[13px] text-fg-dim">
-            <span className="font-mono font-semibold text-fg">{digest.total}</span> incidents reported in{" "}
-            {monthLabel}
-          </div>
-          <div className="text-[12px] text-fg-faint">By first report date · newest first</div>
-        </div>
-        <div className="flex flex-col gap-3">
-          {digest.incidents.map((incident) => (
-            <IncidentCard key={incident.incident_id} incident={incident} />
-          ))}
-        </div>
-      </section>
+      <PageHead
+        crumbs={[{ label: "Home", to: "/" }, { label: "Digest", to: "/digest" }, { label: monthLabel }]}
+        eyebrow="Monthly digest"
+        title={`${monthLabel} in AI incidents`}
+        description="Incidents first reported in the month, from the MIT seed corpus and daily news ingestion."
+      />
+      <DigestMonthTabs months={months} />
+      {isLoading && <LoadingSpinner />}
+      {error && <ErrorMessage message={error} />}
+      {digest && <DigestMonthView key={digest.month} digest={digest} monthLabel={monthLabel} />}
     </>
   );
+}
+
+function DigestMonthView({ digest, monthLabel }: { digest: DigestMonth; monthLabel: string }) {
+  const [offset, setOffset] = useState(0);
+
+  if (digest.total === 0) {
+    return <EmptyState>No AI incidents were reported in {monthLabel}.</EmptyState>;
+  }
+
+  const classified = digest.domain_counts.filter((d) => findDomainByName(d.risk_domain));
+  const top = classified[0];
+  const topDomain = findDomainByName(top?.risk_domain);
+  const delta = digest.total - digest.previous_total;
+  const previousLabel = formatDigestMonth(previousMonth(digest.month), "short").split(" ")[0];
+  const aiCaused = digest.incidents.filter((i) => i.classifications.some((c) => c.causal_entity === "AI")).length;
+
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          to="/incidents"
+          label="Incidents reported"
+          icon={<FileWarning />}
+          value={digest.total}
+          badge={{
+            text: `${delta >= 0 ? "+" : "−"}${Math.abs(delta)} vs ${previousLabel}`,
+            tone: delta > 0 ? "up" : delta < 0 ? "down" : "neutral",
+          }}
+          sub={`${digest.previous_total} in the previous month`}
+        />
+        <StatCard
+          to={topDomain ? taxonomyPaths.domain(topDomain.number) : taxonomyPaths.index}
+          label="Top risk domain"
+          icon={<Target />}
+          color={domainColor(topDomain)}
+          value={topDomain?.name ?? "No classified incidents"}
+          valueIsText
+          badge={top ? { text: `${top.count} of ${digest.total}`, tone: "neutral" } : null}
+        />
+        <StatCard
+          to={taxonomyPaths.index}
+          label="Domains involved"
+          icon={<LayoutGrid />}
+          color="var(--data)"
+          value={
+            <>
+              {classified.length}
+              <span className="text-[18px] text-fg-faint"> / {MIT_DOMAINS.length}</span>
+            </>
+          }
+          sub="Distinct MIT domains"
+        />
+        <StatCard
+          to={taxonomyPaths.causal("entity", "ai")}
+          label="Caused by AI"
+          icon={<Bot />}
+          color="var(--d7)"
+          value={`${Math.round((aiCaused / digest.total) * 100)}%`}
+          sub={`${aiCaused} of ${digest.total} incidents`}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <Card title="Highlights" description="The month's most-reported incidents" scroll>
+          <DigestHighlights highlights={digest.highlights} />
+        </Card>
+        <Card title="By risk domain" description={monthLabel}>
+          <BarList
+            items={digest.domain_counts.map((d) => {
+              const domain = findDomainByName(d.risk_domain);
+              return {
+                key: d.risk_domain,
+                label: domain ? `${domain.number} · ${domain.shortName}` : d.risk_domain,
+                value: d.count,
+                color: domainColor(domain),
+                to: domain && taxonomyPaths.domain(domain.number),
+              };
+            })}
+          />
+        </Card>
+      </div>
+
+      <SectionHead
+        eyebrow={monthLabel}
+        title={`All ${digest.total} incidents`}
+        actions={<span className="text-[12px] text-fg-faint">By first report date · newest first</span>}
+      />
+      <IncidentList incidents={digest.incidents.slice(offset, offset + PAGE_SIZE)} />
+      <Pagination offset={offset} limit={PAGE_SIZE} total={digest.incidents.length} onOffsetChange={setOffset} />
+    </>
+  );
+}
+
+function previousMonth(month: string): string {
+  const [year, mo] = month.split("-").map(Number);
+  return mo === 1 ? `${year - 1}-12-01` : `${year}-${String(mo - 1).padStart(2, "0")}-01`;
 }
