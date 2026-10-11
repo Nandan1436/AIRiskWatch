@@ -4,7 +4,6 @@
 
 AIRiskWatch is an intelligence system for monitoring and analysing AI incidents. As AI spreads into daily life, reports of its harms remain scattered across the web, unlabelled and hard to compare, leaving policymakers without the systematic evidence needed for governance. AIRiskWatch scrapes Wired, The Daily Star and CNN daily, uses an LLM to keep only genuine incidents, extracts structured details and removes duplicates. Each incident is classified with the MIT AI Risk Taxonomy, making patterns comparable. Users can explore trends on a dashboard, browse incidents by risk domain, search by meaning with AI-generated summaries, and receive a monthly email digest.
 
-*Software Project Lab-3 · Institute of Information Technology, University of Dhaka*
 
 ## Getting Started
 
