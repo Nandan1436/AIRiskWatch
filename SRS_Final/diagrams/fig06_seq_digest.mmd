@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    box rgb(254,249,195) Trigger
+        participant SC as Scheduler (1st of<br/>month) / Admin
+    end
+    box rgb(220,252,231) Backend
+        participant DE as digest_email<br/>_service
+        participant DS as DigestService
+    end
+    box rgb(243,232,255) Data
+        participant DB as PostgreSQL
+    end
+    box rgb(255,237,213) External
+        participant SM as SMTP server
+        actor SU as Subscribed user
+    end
+
+    SC->>DE: send_monthly_digest<br/>(previous month)
+    DE->>DS: get_month(month)
+    DS->>DB: Incidents whose earliest report<br/>falls in the month, counts by domain
+    DB-->>DS: rows
+    DS-->>DE: DigestMonthResponse
+    DE->>DE: Render HTML and<br/>plain-text email<br/>#nbsp;
+    DE->>DB: SELECT active, opted-in,<br/>non-admin users
+    loop for each subscriber
+        DE->>DB: Atomic claim (upsert<br/>digest_delivery = pending)
+        alt already sent this month
+            DB-->>DE: no row returned (skip)
+        else claimed
+            DE->>SM: Send email
+            alt delivered
+                SM->>SU: Monthly AI<br/>incident digest
+                DE->>DB: status = sent,<br/>sent_at = now()
+            else SMTP error
+                DE->>DB: status = failed<br/>(retried next run)
+            end
+        end
+    end
+    DE-->>SC: sent / failed /<br/>skipped counts

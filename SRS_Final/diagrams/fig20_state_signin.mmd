@@ -1,0 +1,36 @@
+stateDiagram-v2
+    classDef start fill:#DBEAFE,stroke:#2563EB,color:#0F172A
+    classDef input fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
+    classDef busy fill:#FEF3C7,stroke:#D97706,color:#0F172A
+    classDef done fill:#DCFCE7,stroke:#16A34A,color:#0F172A
+    classDef empty fill:#FFEDD5,stroke:#EA580C,color:#0F172A
+    classDef error fill:#FEE2E2,stroke:#DC2626,color:#0F172A
+
+    state "Idle" as Idle
+    state "Editing" as Editing
+    state "Google popup" as GooglePopup
+    state "Field errors shown" as FieldErrors
+    state "Submitting" as Submitting
+    state "Signed in" as SignedIn
+    state "Authentication error" as AuthError
+
+    [*] --> Idle: open Sign in page
+    Idle --> Editing: type email<br/>and password
+    Idle --> GooglePopup: press Google button
+    Editing --> FieldErrors: submit invalid fields
+    FieldErrors --> Editing: edit a field
+    Editing --> Submitting: submit valid form
+    GooglePopup --> Submitting: credential<br/>received
+    GooglePopup --> AuthError: cancelled or failed
+    Submitting --> SignedIn: token received
+    Submitting --> AuthError: rejected by server
+    AuthError --> Editing: edit and retry
+    SignedIn --> [*]: redirect to<br/>previous page
+
+    class Idle start
+    class Editing input
+    class GooglePopup input
+    class Submitting busy
+    class SignedIn done
+    class FieldErrors empty
+    class AuthError error

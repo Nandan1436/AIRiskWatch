@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    actor U as User
+    box rgb(219,234,254) Frontend
+        participant SPA as React SPA
+    end
+    box rgb(220,252,231) Backend
+        participant R as search_route
+        participant S as SearchService
+    end
+    box rgb(243,232,255) Local models and data
+        participant E as Embedding<br/>model
+        participant DB as PostgreSQL<br/>+ pgvector
+        participant RR as Cross-encoder<br/>reranker
+    end
+    box rgb(255,237,213) External
+        participant L as LLM<br/>provider
+    end
+
+    U->>SPA: Describe AI system /<br/>enter query
+    SPA->>R: POST /api/search<br/>{query, top_k}
+    R->>R: Validate body<br/>(SearchRequest)<br/>#nbsp;
+    alt invalid input
+        R-->>SPA: 422 Unprocessable Entity
+    end
+    R->>S: search(query, top_k)
+    S->>E: embed_text(query)
+    E-->>S: 384-d query vector
+    S->>DB: SELECT incidents ORDER BY<br/>cosine distance LIMIT 30
+    DB-->>S: 30 candidates +<br/>risk domain / subdomain
+    S->>RR: rerank(query, candidate texts)
+    RR-->>S: relevance scores
+    S->>S: Sort by score,<br/>keep top_k<br/>#nbsp;
+    S->>L: Summarise matches, cite incidents as [#35;id]
+    alt LLM error
+        L-->>S: error / rate limit
+        S-->>R: SearchError
+        R-->>SPA: 502 Bad Gateway
+    else success
+        L-->>S: {"summary": "..."}
+        S-->>R: summary + ranked results
+        R-->>SPA: 200 SearchResponse
+        SPA-->>U: Summary, ranked incidents,<br/>risk checklist by MIT domain
+    end
