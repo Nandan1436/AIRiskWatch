@@ -43,16 +43,19 @@ class DigestService:
     def __init__(self, db: Session):
         self.db = db
 
-    def window(self) -> list[date]:
-        """The last DIGEST_MONTH_COUNT complete months, newest first."""
+    def window(self, include_current: bool = False) -> list[date]:
+        """The last DIGEST_MONTH_COUNT complete months, newest first, optionally
+        preceded by the current month so far. Emails only ever use complete months."""
         this_month = current_month()
-        return [add_months(this_month, -i) for i in range(1, DIGEST_MONTH_COUNT + 1)]
+        start = 0 if include_current else 1
+        return [add_months(this_month, -i) for i in range(start, DIGEST_MONTH_COUNT + 1)]
 
-    def in_window(self, month: date) -> bool:
-        return month in self.window()
+    def in_window(self, month: date, include_current: bool = False) -> bool:
+        return month in self.window(include_current)
 
     def available_months(self) -> list[DigestMonthSummary]:
-        months = self.window()
+        months = self.window(include_current=True)
+        this_month = current_month()
         digest_dates = self._digest_dates()
         month_start = func.date_trunc("month", digest_dates.c.digest_date)
         rows = self.db.execute(
@@ -64,7 +67,12 @@ class DigestService:
             .group_by(month_start)
         ).all()
         counts = {row_month.date(): count for row_month, count in rows}
-        return [DigestMonthSummary(month=month, total=counts.get(month, 0)) for month in months]
+        return [
+            DigestMonthSummary(
+                month=month, total=counts.get(month, 0), in_progress=month == this_month
+            )
+            for month in months
+        ]
 
     def get_month(self, month: date) -> DigestMonthResponse:
         digest_dates = self._digest_dates()

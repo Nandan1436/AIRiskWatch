@@ -8,6 +8,7 @@ from app.schemas.incident_schema import IncidentResponse
 class DigestMonthSummary(BaseModel):
     month: date  # first day of the month
     total: int
+    in_progress: bool = False  # the current month so far; never emailed
 
 
 class DigestMonthListResponse(BaseModel):

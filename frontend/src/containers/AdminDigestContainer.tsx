@@ -7,7 +7,9 @@ import { formatDigestMonth, toYearMonth } from "../utils/digestMonth";
 
 export function AdminDigestContainer() {
   const { user } = useAuth();
-  const { months, isLoading, error: monthsError } = useDigestMonths();
+  const { months: allMonths, isLoading, error: monthsError } = useDigestMonths();
+  // Only complete months can be emailed; the month in progress is page-only.
+  const months = allMonths.filter((m) => !m.in_progress);
   const [selected, setSelected] = useState<string>();
   const month = selected ?? (months[0] ? toYearMonth(months[0].month) : undefined);
   const digest = useDigestAdmin(month);
