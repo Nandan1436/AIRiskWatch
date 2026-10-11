@@ -2,8 +2,10 @@
 
 > **Status: implemented in a reduced form (5 Oct 2026).** What shipped differs
 > from the plan below: sources are **Wired** (`/tag/artificial-intelligence/`,
-> `/category/security/`) and **The Daily Star**
-> (`/news/technology/artificial-intelligence`), BBC is dropped; the window is
+> `/category/security/`), **The Daily Star**
+> (`/news/technology/artificial-intelligence`) and **CNN**
+> (`/business/tech/ai-news-artificial-intelligence-updates`, added 11 Oct);
+> BBC is dropped; the window is
 > a **rolling `INGESTION_LOOKBACK_HOURS`** (default 24) instead of the previous
 > calendar day, so there is no `--date` flag; there is no pagination and no
 > `trafilatura` fallback. `feed_client.py` was renamed to `news_client.py` and
