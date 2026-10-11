@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/search", tags=["Search"])
 
 def get_search_service(db: Session = Depends(get_db)) -> SearchService:
     try:
-        client = create_llm_client()
+        client = create_llm_client(interactive=True)
     except LlmClientError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return SearchService(db, client)

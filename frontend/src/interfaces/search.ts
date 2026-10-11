@@ -9,10 +9,9 @@ export interface SearchResultItem {
   incident_date: string | null;
   risk_domain: string | null;
   risk_subdomain: string | null;
-  similarity: number;
 }
 
 export interface SearchResponse {
-  summary: string;
+  summary: string | null; // null when the AI summary could not be generated
   results: SearchResultItem[];
 }
