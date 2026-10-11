@@ -41,6 +41,12 @@ export interface ReportWriteRequest {
   incident_ids: number[];
 }
 
+export interface CreatedIncident {
+  incident_id: number;
+  title: string;
+  url: string;
+}
+
 export interface IngestionRunSummary {
   status: string;
   sources_processed: number;
@@ -49,5 +55,6 @@ export interface IngestionRunSummary {
   articles_failed: number;
   incidents_created: number;
   reports_attached: number;
+  created_incidents: CreatedIncident[];
   errors: string[];
 }

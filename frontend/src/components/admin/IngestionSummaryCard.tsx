@@ -1,3 +1,5 @@
+import { ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { IngestionRunSummary } from "../../interfaces";
 import { Card, StatCard } from "../ui";
 
@@ -24,6 +26,36 @@ export function IngestionSummaryCard({ summary }: { summary: IngestionRunSummary
         {stats.map((stat) => (
           <StatCard key={stat.label} label={stat.label} value={stat.value.toLocaleString()} />
         ))}
+      </div>
+      <div className="mt-5">
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-[.07em] text-fg-faint">
+          Created incidents
+        </div>
+        {summary.created_incidents.length === 0 ? (
+          <p className="text-[13px] text-fg-dim">No new incidents were created in this run.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border rounded-[10px] border border-border">
+            {summary.created_incidents.map((incident) => (
+              <li key={incident.incident_id} className="flex items-start gap-3 px-3 py-2.5 text-[13px]">
+                <span className="font-mono text-fg-faint">#{incident.incident_id}</span>
+                <div className="min-w-0 flex-1">
+                  <Link to={`/incidents/${incident.incident_id}`} className="font-medium text-fg hover:text-accent">
+                    {incident.title}
+                  </Link>
+                  <a
+                    href={incident.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-0.5 flex items-center gap-1 truncate text-[12px] text-fg-dim hover:text-accent"
+                  >
+                    <ExternalLink size={12} className="shrink-0" />
+                    <span className="truncate">{incident.url}</span>
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       {summary.errors.length > 0 && (
         <div className="mt-5">

@@ -126,6 +126,10 @@ def full_run(sources) -> int:
     print(f"articles_failed     {summary.articles_failed}")
     print(f"incidents_created   {summary.incidents_created}")
     print(f"reports_attached    {summary.reports_attached}")
+    if summary.created_incidents:
+        print(f"\ncreated incidents ({len(summary.created_incidents)}):")
+        for created in summary.created_incidents:
+            print(f"  - #{created.incident_id} {created.title}  <{created.url}>")
     if summary.errors:
         print(f"\nerrors ({len(summary.errors)}):")
         for message in summary.errors:

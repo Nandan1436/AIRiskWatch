@@ -35,6 +35,13 @@ class IngestionError(RuntimeError):
 
 
 @dataclass
+class CreatedIncident:
+    incident_id: int
+    title: str
+    url: str
+
+
+@dataclass
 class IngestionRunSummary:
     status: str = "running"
     sources_processed: int = 0
@@ -43,6 +50,7 @@ class IngestionRunSummary:
     articles_failed: int = 0
     incidents_created: int = 0
     reports_attached: int = 0
+    created_incidents: list[CreatedIncident] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
     def record_error(self, message: str) -> None:
@@ -532,10 +540,15 @@ def process_article(
         )
         return
 
-    create_incident(
+    incident_id = create_incident(
         db, client, entry, fields, body_text, incident_fields, embedding, summary
     )
     summary.incidents_created += 1
+    summary.created_incidents.append(
+        CreatedIncident(
+            incident_id=incident_id, title=incident_fields.title, url=entry.url
+        )
+    )
     logger.info(
         "resolve: url=%s no match (best similarity=%.4f) -> new incident",
         entry.url,
