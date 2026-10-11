@@ -27,4 +27,4 @@ When editing the classifier:
 - Mind the size. The classification prompt is about 3.6K tokens, and Groq's
   free tier allows 8K tokens per minute including the answer.
 - A 39-example variant (two per subdomain) scored worse on Gemini and was
-  reverted; it is kept in `eval_results/gemini_fs39/prompt_files/`.
+  reverted.

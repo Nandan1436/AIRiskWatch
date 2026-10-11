@@ -1,6 +1,6 @@
 # AIRiskWatch — Backend
 
-AI incident intelligence platform. Phase 0 (seed import) and Phase 1 (read-only API) are complete: the AI Incident Database corpus (MIT taxonomy scope) lives in PostgreSQL + pgvector and is served by a layered FastAPI application.
+FastAPI service for AIRiskWatch: ingestion, MIT taxonomy classification, semantic search, auth and the monthly digest, on PostgreSQL + pgvector. Setup steps are in the [main README](../README.md#getting-started).
 
 All commands below run from `backend/`.
 
@@ -10,42 +10,35 @@ All commands below run from `backend/`.
 uvicorn app.main:app --reload
 ```
 
-The API listens on `http://127.0.0.1:8000`. Interactive docs (Swagger UI) are served at `http://127.0.0.1:8000/docs`.
+The API listens on `http://127.0.0.1:8000`. Every endpoint is documented in the interactive Swagger UI at `http://127.0.0.1:8000/docs`.
 
 ## Architecture
 
-Layered per `docs/architecture.md`: routes → services → SQLAlchemy models, with Pydantic schemas defining the API contract.
+Layered per [`docs/architecture.md`](docs/architecture.md): routes → services → SQLAlchemy models, with Pydantic schemas defining the API contract.
 
 ```
 app/
-├── main.py          # app creation, CORS, router registration
-├── config.py        # env-driven configuration (DATABASE_URL, CORS_ORIGINS)
-├── database.py      # engine, session factory, declarative base, get_db
-├── models/          # SQLAlchemy models mapping the seeded schema
+├── main.py          # app creation, CORS, router registration, schedulers
+├── config.py        # env-driven configuration
+├── database.py      # engine, session factory, get_db
+├── core/            # LLM, embedding, reranker, email and news clients; site scrapers
+├── prompts/         # LLM prompts, MIT taxonomy definitions, few-shot examples
+├── models/          # SQLAlchemy models
 ├── schemas/         # Pydantic request/response models
-├── services/        # business logic and queries
+├── services/        # business logic: ingestion, classification, search, digest, auth
 └── routes/          # FastAPI routers (thin, delegate to services)
 ```
 
-## API
+## Scripts
 
-| Method | Path | Query params | Description |
-|--------|------|--------------|-------------|
-| GET | `/api/incidents/` | `limit`, `offset`, `search`, `risk_domain`, `risk_subdomain`, `causal_entity`, `timing`, `intent`, `date_from`, `date_to` | Paginated, filterable incident list with MIT classifications |
-| GET | `/api/incidents/{incident_id}` | — | Incident detail: description, classifications, linked reports |
-| GET | `/api/reports/{report_number}` | — | Report detail including full article text |
-| GET | `/api/risk-domains/` | — | MIT risk domains/subdomains with distinct incident counts |
-| GET | `/health` | — | Liveness check |
+| Script | Purpose |
+|---|---|
+| `scripts/apply_migrations.py` | Apply `db/migrations/*.sql` (idempotent) |
+| `scripts/import_seed.py` | Load the AI Incident Database snapshot from `SEED_DATA_DIR` |
+| `scripts/backfill_embeddings.py` | Embed incidents that have no embedding yet |
+| `scripts/create_admin.py` | Create or promote an admin account |
+| `scripts/run_classification.py` | Classify incidents (`--mode backfill`) or evaluate against gold labels (`--mode eval`) |
+| `scripts/evaluate_classifier.py` | Score and compare evaluation runs |
+| `scripts/run_ingestion.py` | Run the news ingestion pipeline (`--check-sources`, `--dry-run`, `--source`) |
 
-### Examples
-
-```bash
-curl "http://127.0.0.1:8000/api/incidents/?risk_domain=Misinformation&limit=5"
-curl "http://127.0.0.1:8000/api/incidents/?search=deepfake&intent=Intentional"
-curl "http://127.0.0.1:8000/api/incidents/1"
-curl "http://127.0.0.1:8000/api/risk-domains/"
-```
-
-## Scope (v1)
-
-Only the MIT taxonomy is imported: `incidents.csv`, `reports.csv`, `classifications_MIT.csv`. CSET and GMF classifications, the mitigation crosswalk, and entity graph data are deferred.
+Evaluation output is written to `eval_results/`, which is not tracked in git.
