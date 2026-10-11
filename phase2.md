@@ -51,7 +51,7 @@ The `classify_incident()` / `save_llm_classification()` core built here is the *
 | Cerebras `llama-3.3-70b` | 30 RPM, 1M tokens/day, 8K context | ~200–250/day → ~7 days | Workable secondary; the ~5k prompt just fits the 8K context |
 | OpenRouter `:free` models | 50 req/day (1,000/day only after one-time $10 top-up) | ~30 days | Not practical while strictly $0 |
 
-**Chosen setup:** a current Gemini flash-lite (`gemini-3.5-flash-lite`, since the 2.5 line is closed to new keys) as `LLM_PROVIDER=gemini` default; Mistral Small as second provider — it's OpenAI-compatible, so it reuses the same `OpenAiCompatibleClient` as Groq/Ollama (zero extra code, just a base URL + key). Workflow: prompt-iteration on Gemini during the day, full-batch overnight runs on Mistral.
+**Chosen setup:** a current Gemini flash-lite (`gemini-3.5-flash-lite`, since the 2.5 line is closed to new keys) as `LLM_PROVIDER=gemini` default. **Update (Oct 2026):** Mistral and Ollama were dropped. The second provider is Groq (`LLM_PROVIDER=groq`, one `GROQ_API_KEY`), comparing `openai/gpt-oss-120b` and `qwen/qwen3.8-27b`, the only strong Groq models with strict `json_schema` output. Free tier per model: 8K tokens/min, 200K tokens/day, so about 30 classifications per model per day.
 
 ### Ollama options (this machine: 8GB RAM, 2-core i5-7200U, 2GB 940MX)
 
@@ -85,13 +85,15 @@ Sources: [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits)
 
 ### 2. Taxonomy module — `backend/app/core/mit_taxonomy.py` (new, + `core/__init__.py`)
 
-- 7 domains + full subdomain list with 1–2 sentence descriptions each; axis enums incl. `Other`; `SUBDOMAIN_TO_DOMAIN` reverse map; `FEW_SHOT_INCIDENT_IDS` (7 hand-picked exemplars, one per domain, held out of eval).
+- The taxonomy text and the few-shot examples live in `backend/app/prompts/classification/` (`taxonomy.json`, `examples.json`); `mit_taxonomy.py` derives the label lists, `SUBDOMAIN_TO_DOMAIN`, and `FEW_SHOT_INCIDENT_IDS` from them. 7 domains + 21 subdomains with 1–2 sentence descriptions; axis enums incl. `Other`.
+- 7 few-shot examples, one gold incident per domain, held out of eval (eval set 1,235). Title and description come from the DB; the example answer uses the gold labels, the first other subdomain of the domain as the second choice, confidence 0.9, and a one-line justification.
+- **Tried and reverted (Oct 2026):** 39 examples (two per subdomain, hand-written justifications, subdomain definitions verbatim from the paper's Table 2). On Gemini it scored worse: domain accuracy 76.4% vs 82.4%, and 72.8% vs 77.8% on the 81 incidents both runs share. Equal examples per subdomain over-weighted the rare Socioeconomic domain (precision 0.32). That prompt is kept with its results in `backend/eval_results/gemini_fs39/prompt_files/`.
 - Taxonomy-vs-DB string check (flag on the batch script): assert every distinct gold `risk_domain`/`risk_subdomain` string exists in the module — catches transcription typos before burning quota.
 
 ### 3. LLM client — `backend/app/core/llm_client.py` (new)
 
 - `LlmClient` protocol: `complete_json(system, user, response_schema) -> dict`. Plain `httpx`, no LangChain/SDKs.
-- `GeminiClient` (native REST, `responseMimeType` + `responseSchema`, temperature 0) and `OpenAiCompatibleClient` (covers **both** Groq and Ollama via base URL).
+- `GeminiClient` (native REST, `responseMimeType` + `responseSchema`, temperature 0) and `GroqClient` (OpenAI-compatible, strict `json_schema`: the schema is rewritten so every property is required and optional ones are nullable; `reasoning_effort=low`). A 429 that outlasts the retries raises `LlmRateLimitError`, and the batch runner stops so a re-run resumes.
 - Shared: client-side RPM pacing, exponential backoff on 429/5xx honoring `Retry-After`, one JSON-repair retry (re-send with the parse/validation error), typed `LlmClientError`.
 - `create_llm_client()` factory switching on `LLM_PROVIDER` env var.
 
@@ -99,17 +101,17 @@ Sources: [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits)
 
 - Pydantic output model: `risk_domain` (Literal 7), `risk_subdomain`, `risk_subdomain_second` (powers top-2 accuracy), `causal_entity`/`timing`/`intent` (Literals incl. `Other`), `confidence` 0–1, `justification` (≤2 sentences). Cross-field validator: subdomain must belong to the chosen domain; violation → one repair retry → fail.
 - Input construction: title + description + up to 2 linked reports truncated to ~1,500 chars each (~1.2–2k tokens).
-- Prompt: system = task + full taxonomy with descriptions + axis definitions + output rules; user = 7 few-shot exemplars (title+description only) with gold JSON, then the target.
+- Prompt (files in `backend/app/prompts/classification/`): system = task + full taxonomy with descriptions + axis definitions + output rules; user = 7 few-shot examples (title + description) with their JSON answers, then the target. About 3.6K tokens.
 - `classify_incident(incident_id)` (pure prediction — no DB write) + `save_llm_classification(...)` (INSERT `classified_by='llm'`, `classified_at=now()`, `published=False`; skip if an llm row exists → idempotent). **Only `save_llm_classification` writes; eval never calls it.**
 
 ### 5. Config & deps
 
-- **`backend/app/config.py`** + **`.env.example`**: `LLM_PROVIDER` (default `gemini`), `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.5-flash-lite`, `MISTRAL_API_KEY`, `MISTRAL_MODEL=mistral-small-latest`, `GROQ_API_KEY`, `GROQ_MODEL=llama-3.3-70b-versatile`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL=qwen3:4b`, `LLM_MAX_RPM=10`, `LLM_TIMEOUT_S=60`. Mistral, Groq, and Ollama all go through the same `OpenAiCompatibleClient` (base URL + key + model).
+- **`backend/app/config.py`** + **`.env.example`**: `LLM_PROVIDER` (`gemini` | `groq`), `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.5-flash-lite`, `GROQ_API_KEY`, `GROQ_MODEL=openai/gpt-oss-120b` (or `qwen/qwen3.8-27b`), `GROQ_REASONING_EFFORT=low`, `GROQ_MAX_COMPLETION_TOKENS=2048`, `LLM_MAX_RPM=10`, `LLM_TIMEOUT_S=60`.
 - **`backend/requirements.txt`**: add `httpx`, `scikit-learn` (metrics only).
 
 ### 6. Batch runner — `backend/scripts/run_classification.py` (new, spends quota)
 
-- `--mode eval|backfill` (eval = gold incidents minus few-shot exemplars, 1,235; backfill = the 256 unclassified), `--limit N`, `--sample N --seed 42` (stratified by domain, floor 10/domain — `--sample 300` gives usable numbers in one day of quota), `--run-name` → `backend/eval_results/<run-name>/predictions.jsonl`.
+- `--mode eval|backfill` (eval = gold incidents minus few-shot examples, 1,235; backfill = the 256 unclassified), `--provider gemini|groq` and `--model` (override `.env` per run; each prediction records its model), `--limit N`, `--sample N --seed 42` (stratified by domain, floor 10/domain — `--sample 300` gives usable numbers in one day of quota), `--run-name` → `backend/eval_results/<run-name>/predictions.jsonl`.
 - **`--mode eval` writes only the JSONL predictions file — no DB write.** `--mode backfill` also writes to the DB via `save_llm_classification`. This is what enforces "evaluate before you touch the data."
 - **Resumable**: skip incident_ids already in JSONL (backfill: or already in DB); append each result line immediately. Ctrl-C / 429-exhaustion loses nothing; rerun next day when caps reset.
 - Progress line per incident; end summary.

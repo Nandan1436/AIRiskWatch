@@ -12,7 +12,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from sqlalchemy import select  # noqa: E402
 
 from app.core import mit_taxonomy as tax  # noqa: E402
-from app.core.llm_client import LlmClientError, create_llm_client  # noqa: E402
+from app.core.llm_client import (  # noqa: E402
+    LlmClientError,
+    LlmRateLimitError,
+    create_llm_client,
+)
 from app.database import SessionLocal  # noqa: E402
 from app.models.incident_model import Incident  # noqa: E402
 from app.models.mit_classification_model import MitClassification  # noqa: E402
@@ -117,6 +121,9 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--run-name", default=None, help="output subdir under eval_results/")
     parser.add_argument("--skip-check", action="store_true", help="skip the taxonomy-vs-DB check")
+    parser.add_argument("--provider", choices=["gemini", "groq"], default=None, help="override LLM_PROVIDER")
+    parser.add_argument("--model", default=None, help="override the provider's model from .env")
+    parser.add_argument("--ids", default=None, help="comma-separated incident ids, in order; replaces sampling")
     args = parser.parse_args()
 
     run_name = args.run_name or args.mode
@@ -129,7 +136,9 @@ def main() -> None:
         if not args.skip_check:
             check_taxonomy(db)
 
-        if args.mode == "eval":
+        if args.ids:
+            targets = [int(i) for i in args.ids.split(",") if i.strip()]
+        elif args.mode == "eval":
             id_to_domain = gold_incident_domains(db)
             if not id_to_domain:
                 print(
@@ -160,7 +169,8 @@ def main() -> None:
             print("Nothing to do.")
             return
 
-        client = create_llm_client()
+        client = create_llm_client(args.provider, args.model)
+        print(f"model={client.model}")
         service = LlmClassificationService(db, client)
 
         ok_count = 0
@@ -169,12 +179,22 @@ def main() -> None:
             for n, incident_id in enumerate(pending, start=1):
                 try:
                     result = service.classify_incident(incident_id)
-                    record = {"incident_id": incident_id, "ok": True, **result.model_dump()}
+                    record = {
+                        "incident_id": incident_id,
+                        "ok": True,
+                        "model": client.model,
+                        **result.model_dump(),
+                    }
                     if args.mode == "backfill":
                         saved = service.save_llm_classification(incident_id, result)
                         record["saved_to_db"] = saved
                     ok_count += 1
                     status = f"{result.risk_domain} / {result.risk_subdomain}"
+                except LlmRateLimitError as exc:
+                    # Quota exhausted: stop without recording a failure, so a
+                    # re-run with the same --run-name resumes from here.
+                    print(f"[{n}/{len(pending)}] incident {incident_id}: RATE LIMITED, stopping: {exc}")
+                    break
                 except (ClassificationError, LlmClientError) as exc:
                     record = {"incident_id": incident_id, "ok": False, "error": str(exc)}
                     fail_count += 1
