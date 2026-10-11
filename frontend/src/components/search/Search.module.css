@@ -1,34 +1,8 @@
 @reference "../../styles/global.css";
 
-/* ---------- mode tabs ---------- */
-.modes {
-  @apply mb-4 mt-[26px] inline-flex gap-1 rounded-xl border p-1;
-  background: var(--bg-2);
-  border-color: var(--border-soft);
-}
-
-.mode {
-  @apply inline-flex items-center gap-2 rounded-[9px] px-3.5 py-2 text-[13.5px] font-semibold text-fg-dim;
-}
-
-.mode:hover {
-  @apply text-fg;
-}
-
-.mode svg {
-  @apply h-4 w-4;
-}
-
-.modeActive {
-  composes: mode;
-  background: var(--surface);
-  color: var(--fg);
-  box-shadow: var(--shadow);
-}
-
 /* ---------- query box ---------- */
 .box {
-  @apply flex items-center gap-3 rounded-[14px] border py-2 pl-[18px] pr-2 text-[16px];
+  @apply mt-[26px] flex items-center gap-3 rounded-[14px] border py-2 pl-[18px] pr-2 text-[16px];
   background: var(--surface);
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--accent-soft);
@@ -149,7 +123,7 @@
 }
 
 .result {
-  @apply grid grid-cols-[4px_1fr_90px] gap-[18px] rounded-2xl border py-4 pl-0 pr-5 text-fg;
+  @apply grid grid-cols-[4px_1fr] gap-[18px] rounded-2xl border py-4 pl-0 pr-5 text-fg;
   background: var(--surface);
   border-color: var(--border);
   box-shadow: var(--shadow);
@@ -182,46 +156,12 @@
   @apply h-[13px] w-[13px];
 }
 
-.score {
-  @apply self-center text-right;
-}
-
-.score b {
-  @apply block text-[20px] tabular-nums;
-}
-
-.score span {
-  @apply text-[11px] text-fg-faint;
-}
-
-.meter {
-  @apply mt-1.5 h-1 overflow-hidden rounded-[3px];
-  background: var(--bg-2);
-}
-
-.meter div {
-  @apply h-full;
-  background: var(--data);
-}
-
 @media (max-width: 600px) {
   .box {
     @apply flex-wrap pl-3.5 text-[15px];
   }
 
   .result {
-    @apply grid-cols-[4px_1fr] gap-3 pr-3;
-  }
-
-  .score {
-    @apply col-start-2 flex items-center gap-2 text-left;
-  }
-
-  .score b {
-    @apply inline text-[15px];
-  }
-
-  .meter {
-    @apply mt-0 w-16;
+    @apply gap-3 pr-3;
   }
 }
