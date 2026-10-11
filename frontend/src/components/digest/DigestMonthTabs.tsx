@@ -3,14 +3,12 @@ import type { DigestMonthSummary } from "../../interfaces";
 import { formatDigestMonth, toYearMonth } from "../../utils/digestMonth";
 import styles from "./Digest.module.css";
 
-const CURRENT_MONTH = new Date().toISOString().slice(0, 7);
-
 export function DigestMonthTabs({ months }: { months: DigestMonthSummary[] }) {
   return (
     <nav className={styles.months} aria-label="Digest months">
       {months.map((m) => {
         const ym = toYearMonth(m.month);
-        const inProgress = ym === CURRENT_MONTH;
+        const inProgress = m.in_progress;
         return (
           <NavLink
             key={ym}

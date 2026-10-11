@@ -293,32 +293,3 @@ export const MIT_CAUSAL: CausalDimensionInfo[] = [
     ],
   },
 ];
-
-// Risk-checklist prompts, one per subdomain: the question a team should be
-// able to answer before shipping a system that resembles past incidents.
-export const SUBDOMAIN_CHECKS: Record<string, string> = {
-  "1.1": "Have you measured outcomes across demographic groups, and can affected people contest a decision?",
-  "1.2": "What stops the system from producing hateful, violent, sexual or self-harm content, including under adversarial prompts?",
-  "1.3": "Is accuracy tested separately for each user group, accent, language or skin tone you serve?",
-  "2.1": "What personal data can the system see, store, log or reveal, and could it infer sensitive facts users never shared?",
-  "2.2": "Have you red-teamed prompt injection, data poisoning and tool misuse that could expose data or trigger actions?",
-  "3.1": "Is output grounded in verified sources, and are you bound by what the system tells users?",
-  "3.2": "Could the system flood channels with plausible synthetic content, and is that content labelled?",
-  "4.1": "Could the system be scripted at scale for propaganda, profiling or surveillance? Are there rate limits and abuse monitoring?",
-  "4.2": "Could it give meaningful uplift to malware or weapons development? Are dangerous capabilities evaluated and gated?",
-  "4.3": "Could someone use it to impersonate a person, defraud users or produce non-consensual imagery? Is identity verification robust?",
-  "5.1": "Do users understand the system's limits, and is there a clear hand-off to a human in critical situations?",
-  "5.2": "Which decisions does the system make on its own, and can people review, override or opt out?",
-  "6.1": "Who captures the benefits of this system, and who bears its costs?",
-  "6.2": "Will the system replace or degrade jobs, and how are affected workers consulted?",
-  "6.3": "Does the system reproduce creators' work, and are they credited, consenting or compensated?",
-  "6.4": "Is release timing driven by competition at the expense of safety testing?",
-  "6.5": "Which regulations apply, and who is accountable when the system causes harm?",
-  "6.6": "What are the energy, water and hardware costs of training and running the system?",
-  "7.1": "Can the system pursue proxy goals that conflict with what users or designers actually want?",
-  "7.2": "Has the system been evaluated for dangerous capabilities such as deception, cyber-offense or self-proliferation?",
-  "7.3": "How does the system behave on inputs unlike its training data, and what happens when it fails?",
-  "7.4": "Can you explain an individual decision to the person affected and to an auditor?",
-  "7.5": "Are you making claims about the system's sentience or wellbeing that need scrutiny?",
-  "7.6": "Does the system interact with other AI agents, and could failures cascade between them?",
-};

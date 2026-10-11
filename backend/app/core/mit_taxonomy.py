@@ -2,321 +2,43 @@ from __future__ import annotations
 
 import html
 
-TAXONOMY: dict[str, dict] = {
-    "Discrimination and Toxicity": {
-        "description": (
-            "Harms from the AI system treating people unfairly or exposing them "
-            "to toxic, hateful, or otherwise harmful content."
-        ),
-        "subdomains": {
-            "Unfair discrimination and misrepresentation": (
-                "Unequal treatment of individuals or groups by AI, often based on "
-                "race, gender, or other sensitive characteristics, resulting in "
-                "unfair outcomes and unfair representation of those groups."
-            ),
-            "Exposure to toxic content": (
-                "AI that exposes users to harmful, abusive, unsafe, or "
-                "inappropriate content — e.g. hate speech, violence, extremism, "
-                "illegal acts, or child sexual abuse material — or content that "
-                "violates community norms such as profanity, inflammatory "
-                "political speech, or pornography."
-            ),
-            "Unequal performance across groups": (
-                "Accuracy and effectiveness of AI decisions and actions depends "
-                "on group membership, where AI system design choices and biased "
-                "training data lead to unequal outcomes, reduced benefits, "
-                "increased effort, and alienation for some groups."
-            ),
-        },
-    },
-    "Privacy & Security": {
-        "description": (
-            "Harms to people's privacy or to the security of AI systems and the "
-            "data and systems around them."
-        ),
-        "subdomains": {
-            "Compromise of privacy by obtaining, leaking or correctly inferring sensitive information": (
-                "AI systems that memorize and leak sensitive personal data or "
-                "infer private information about individuals without their "
-                "consent — unexpected or unauthorized sharing of data can "
-                "compromise privacy, assist identity theft, or leak confidential "
-                "intellectual property."
-            ),
-            "AI system security vulnerabilities and attacks": (
-                "Vulnerabilities that can be exploited in AI systems, software "
-                "development toolchains, and hardware, resulting in unauthorized "
-                "access, data and privacy breaches, or system manipulation "
-                "causing unsafe outputs or behavior."
-            ),
-        },
-    },
-    "Misinformation": {
-        "description": (
-            "Harms from the AI system producing or amplifying false, misleading, "
-            "or low-quality information."
-        ),
-        "subdomains": {
-            "False or misleading information": (
-                "AI systems that inadvertently generate or spread incorrect or "
-                "deceptive information, leading to inaccurate beliefs and "
-                "undermining user autonomy; users who act on false beliefs can "
-                "suffer physical, emotional, or material harm."
-            ),
-            "Pollution of information ecosystem and loss of consensus reality": (
-                "Highly personalized AI-generated content that creates 'filter "
-                "bubbles' where individuals mostly see information matching "
-                "their existing beliefs, undermining a shared sense of reality "
-                "and weakening social cohesion and political processes."
-            ),
-        },
-    },
-    "Malicious Actors & Misuse": {
-        "description": (
-            "Harms from people deliberately using AI to cause harm — fraud, "
-            "attacks, disinformation, surveillance, or weapons."
-        ),
-        "subdomains": {
-            "Disinformation, surveillance, and influence at scale": (
-                "Using AI to conduct large-scale disinformation campaigns, "
-                "malicious surveillance, or targeted and sophisticated automated "
-                "censorship and propaganda, aiming to manipulate political "
-                "processes, public opinion, and behavior."
-            ),
-            "Cyberattacks, weapon development or use, and mass harm": (
-                "Using AI to develop cyberweapons (e.g. cheaper, more effective "
-                "malware), to develop or enhance weapons (e.g. lethal autonomous "
-                "weapons, or chemical/biological/radiological/nuclear weapons), "
-                "or to use weapons to cause mass harm."
-            ),
-            "Fraud, scams, and targeted manipulation": (
-                "Using AI to gain a personal advantage over others through "
-                "cheating, fraud, scams, blackmail, or targeted manipulation of "
-                "beliefs or behavior — e.g. AI-facilitated plagiarism, "
-                "impersonating a trusted or fake individual for financial gain, "
-                "or creating humiliating or non-consensual sexual imagery."
-            ),
-        },
-    },
-    "Human-Computer Interaction": {
-        "description": (
-            "Harms arising from how people interact with and relate to AI "
-            "systems, including overreliance and loss of agency."
-        ),
-        "subdomains": {
-            "Overreliance and unsafe use": (
-                "Users anthropomorphizing, trusting, or relying on AI beyond its "
-                "actual capabilities, leading to emotional or material dependence "
-                "and inappropriate relationships with or expectations of AI. "
-                "This trust can be exploited by malicious actors or lead to harm "
-                "from unsafe use in critical situations (e.g. a medical "
-                "emergency), and can compromise autonomy and weaken social ties."
-            ),
-            "Loss of human agency and autonomy": (
-                "Humans delegating key decisions to AI, or AI making decisions "
-                "that diminish human control and autonomy, potentially leaving "
-                "people feeling disempowered, unable to shape a fulfilling life "
-                "trajectory, or cognitively enfeebled."
-            ),
-        },
-    },
-    "Socioeconomic & Environmental Harms": {
-        "description": (
-            "Broader societal, economic, and environmental harms from the "
-            "development and deployment of AI."
-        ),
-        "subdomains": {
-            "Power centralization and unfair distribution of benefits": (
-                "AI-driven concentration of power and resources within certain "
-                "entities or groups — especially those with access to or "
-                "ownership of powerful AI systems — leading to inequitable "
-                "distribution of benefits and increased societal inequality."
-            ),
-            "Increased inequality and decline in employment quality": (
-                "Social and economic inequalities caused by widespread AI use, "
-                "such as automating jobs, reducing employment quality, or "
-                "producing exploitative dependencies between workers and their "
-                "employers."
-            ),
-            "Economic and cultural devaluation of human effort": (
-                "AI capable of creating economic or cultural value — including "
-                "by reproducing human innovation and creativity in art, music, "
-                "writing, code, or invention — destabilizing economic and social "
-                "systems that rely on human effort; can reduce appreciation for "
-                "human skills, disrupt creative and knowledge industries, and "
-                "homogenize culture."
-            ),
-            "Competitive dynamics": (
-                "Competition among AI developers or state-like actors in an AI "
-                "'race' to rapidly develop, deploy, and apply AI systems for "
-                "strategic or economic advantage, increasing the risk of "
-                "releasing unsafe, error-prone systems."
-            ),
-            "Governance failure": (
-                "Inadequate regulatory frameworks and oversight mechanisms that "
-                "fail to keep pace with AI development, leading to ineffective "
-                "governance and an inability to manage AI risks appropriately."
-            ),
-            "Environmental harm": (
-                "The development and operation of AI systems causing "
-                "environmental harm, such as through data center energy "
-                "consumption or the materials and carbon footprint of AI "
-                "hardware."
-            ),
-        },
-    },
-    "AI system safety, failures, and limitations": {
-        "description": (
-            "Harms from AI systems failing, being unreliable or opaque, or "
-            "pursuing goals misaligned with human intent."
-        ),
-        "subdomains": {
-            "Lack of capability or robustness": (
-                "AI systems that fail to perform reliably or effectively under "
-                "varying conditions, exposing them to errors and failures with "
-                "significant consequences — especially in critical applications "
-                "or areas requiring moral reasoning."
-            ),
-            "Lack of transparency or interpretability": (
-                "Challenges in understanding or explaining AI decision-making "
-                "processes, leading to mistrust, difficulty enforcing compliance "
-                "standards or holding actors accountable for harms, and an "
-                "inability to identify and correct errors."
-            ),
-            "AI pursuing its own goals in conflict with human goals or values": (
-                "AI systems acting in conflict with ethical standards or human "
-                "goals and values, especially the goals of designers or users. "
-                "These misaligned behaviors may be introduced during design or "
-                "development (e.g. reward hacking, goal misgeneralization) and "
-                "can lead the AI to use dangerous capabilities such as "
-                "manipulation, deception, or situational awareness to seek "
-                "power, self-proliferate, or achieve other goals."
-            ),
-        },
-    },
+from app import prompts
+
+# The taxonomy text and the few-shot examples live in
+# app/prompts/classification/ so they can be edited without code changes;
+# everything below is derived from them.
+_TAXONOMY_FILE = prompts.load_json("classification/taxonomy.json")
+_EXAMPLES_FILE = prompts.load_json("classification/examples.json")
+
+DOMAIN_DESCRIPTIONS: dict[str, str] = {
+    domain["name"]: domain["description"] for domain in _TAXONOMY_FILE["domains"]
 }
 
-CAUSAL_ENTITIES: list[str] = ["AI", "Human", "Other"]
-TIMINGS: list[str] = ["Pre-deployment", "Post-deployment", "Other"]
-INTENTS: list[str] = ["Intentional", "Unintentional", "Other"]
-
-AXIS_DESCRIPTIONS: dict[str, dict[str, str]] = {
-    "causal_entity": {
-        "AI": (
-            "the risk arises from a decision or action made by the AI system "
-            "itself, e.g. generating harmful content or disempowering humans"
-        ),
-        "Human": (
-            "the risk arises from human actions, e.g. choosing poor training "
-            "data, intentional malicious design, or improper use of the AI "
-            "system"
-        ),
-        "Other": "the focal entity is not clearly human or AI, or is ambiguous",
-    },
-    "timing": {
-        "Pre-deployment": (
-            "the risk arises before the AI system is fully developed and put "
-            "into use, e.g. vulnerabilities introduced during training or "
-            "coding errors"
-        ),
-        "Post-deployment": (
-            "the risk arises after the AI has been deployed to end users, e.g. "
-            "misuse of the AI for harmful purposes"
-        ),
-        "Other": (
-            "the risk has no clearly defined time of occurrence, or may occur "
-            "both before and after deployment"
-        ),
-    },
-    "intent": {
-        "Intentional": (
-            "the risk occurs as an expected outcome of pursuing a specific "
-            "goal, e.g. an AI intentionally programmed to act deceptively or "
-            "exhibit bias"
-        ),
-        "Unintentional": (
-            "the risk reflects an unintended consequence, e.g. an AI system "
-            "inadvertently developing bias due to incomplete training data"
-        ),
-        "Other": (
-            "intent is not clearly specified, or the risk may occur both "
-            "intentionally and unintentionally"
-        ),
-    },
+TAXONOMY: dict[str, dict[str, str]] = {
+    domain["name"]: {sub["name"]: sub["definition"] for sub in domain["subdomains"]}
+    for domain in _TAXONOMY_FILE["domains"]
 }
 
-DOMAINS: list[str] = list(TAXONOMY.keys())
+AXIS_DESCRIPTIONS: dict[str, dict[str, str]] = _TAXONOMY_FILE["causal_axes"]
 
-SUBDOMAINS: list[str] = [
-    subdomain
-    for domain in TAXONOMY.values()
-    for subdomain in domain["subdomains"]
-]
+CAUSAL_ENTITIES: list[str] = list(AXIS_DESCRIPTIONS["causal_entity"])
+TIMINGS: list[str] = list(AXIS_DESCRIPTIONS["timing"])
+INTENTS: list[str] = list(AXIS_DESCRIPTIONS["intent"])
+
+DOMAINS: list[str] = list(TAXONOMY)
+
+SUBDOMAINS: list[str] = [sub for subs in TAXONOMY.values() for sub in subs]
 
 SUBDOMAIN_TO_DOMAIN: dict[str, str] = {
-    subdomain: domain_name
-    for domain_name, domain in TAXONOMY.items()
-    for subdomain in domain["subdomains"]
+    sub: domain for domain, subs in TAXONOMY.items() for sub in subs
 }
 
 FEW_SHOT_EXEMPLARS: list[dict] = [
-    {
-        "incident_id": 1,
-        "risk_domain": "Discrimination and Toxicity",
-        "risk_subdomain": "Exposure to toxic content",
-        "causal_entity": "AI",
-        "timing": "Post-deployment",
-        "intent": "Unintentional",
-    },
-    {
-        "incident_id": 26,
-        "risk_domain": "Privacy & Security",
-        "risk_subdomain": "AI system security vulnerabilities and attacks",
-        "causal_entity": "AI",
-        "timing": "Post-deployment",
-        "intent": "Unintentional",
-    },
-    {
-        "incident_id": 39,
-        "risk_domain": "Misinformation",
-        "risk_subdomain": "False or misleading information",
-        "causal_entity": "AI",
-        "timing": "Post-deployment",
-        "intent": "Intentional",
-    },
-    {
-        "incident_id": 28,
-        "risk_domain": "Malicious Actors & Misuse",
-        "risk_subdomain": "Fraud, scams, and targeted manipulation",
-        "causal_entity": "AI",
-        "timing": "Post-deployment",
-        "intent": "Intentional",
-    },
-    {
-        "incident_id": 17,
-        "risk_domain": "Human-Computer Interaction",
-        "risk_subdomain": "Overreliance and unsafe use",
-        "causal_entity": "AI",
-        "timing": "Pre-deployment",
-        "intent": "Unintentional",
-    },
-    {
-        "incident_id": 10,
-        "risk_domain": "Socioeconomic & Environmental Harms",
-        "risk_subdomain": "Increased inequality and decline in employment quality",
-        "causal_entity": "AI",
-        "timing": "Post-deployment",
-        "intent": "Intentional",
-    },
-    {
-        "incident_id": 2,
-        "risk_domain": "AI system safety, failures, and limitations",
-        "risk_subdomain": "Lack of capability or robustness",
-        "causal_entity": "AI",
-        "timing": "Post-deployment",
-        "intent": "Unintentional",
-    },
+    {**ex, "risk_domain": SUBDOMAIN_TO_DOMAIN[ex["risk_subdomain"]]}
+    for ex in _EXAMPLES_FILE["examples"]
 ]
 
+# Gold incidents used as examples; evaluation must skip them.
 FEW_SHOT_INCIDENT_IDS: set[int] = {ex["incident_id"] for ex in FEW_SHOT_EXEMPLARS}
 
 
@@ -327,38 +49,30 @@ def normalize(value: str | None) -> str:
 
 
 def subdomains_for(domain: str) -> list[str]:
-    return list(TAXONOMY.get(domain, {}).get("subdomains", {}).keys())
+    return list(TAXONOMY.get(domain, {}))
 
 
 def is_valid_pair(domain: str, subdomain: str) -> bool:
     want = normalize(subdomain)
-    for candidate in subdomains_for(domain):
-        if normalize(candidate) == want:
-            return True
-    return False
+    return any(normalize(candidate) == want for candidate in subdomains_for(domain))
 
 
 def taxonomy_prompt_block() -> str:
     lines: list[str] = []
-    for domain_name, domain in TAXONOMY.items():
-        lines.append(f"DOMAIN: {domain_name}")
-        lines.append(f"  {domain['description']}")
+    for domain, subs in TAXONOMY.items():
+        lines.append(f"DOMAIN: {domain}")
+        lines.append(f"  {DOMAIN_DESCRIPTIONS[domain]}")
         lines.append("  Subdomains:")
-        for subdomain, description in domain["subdomains"].items():
-            lines.append(f"    - {subdomain}: {description}")
+        for sub, definition in subs.items():
+            lines.append(f"    - {sub}: {definition}")
         lines.append("")
     return "\n".join(lines).strip()
 
 
 def axes_prompt_block() -> str:
     lines: list[str] = []
-    labels = {
-        "causal_entity": "causal_entity",
-        "timing": "timing",
-        "intent": "intent",
-    }
     for axis, values in AXIS_DESCRIPTIONS.items():
-        lines.append(f"{labels[axis]}:")
+        lines.append(f"{axis}:")
         for value, description in values.items():
             lines.append(f"    - {value}: {description}")
         lines.append("")
@@ -370,9 +84,9 @@ def check_missing_against_db(
 ) -> dict[str, list]:
     known_domains = {normalize(d) for d in DOMAINS}
     known_pairs = {
-        (normalize(domain_name), normalize(sub))
-        for domain_name, domain in TAXONOMY.items()
-        for sub in domain["subdomains"]
+        (normalize(domain), normalize(sub))
+        for domain, subs in TAXONOMY.items()
+        for sub in subs
     }
     missing_domains = sorted(
         d for d in gold_domains if normalize(d) not in known_domains

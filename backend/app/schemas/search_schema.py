@@ -14,9 +14,8 @@ class SearchResultItem(BaseModel):
     incident_date: date | None
     risk_domain: str | None
     risk_subdomain: str | None
-    similarity: float
 
 
 class SearchResponse(BaseModel):
-    summary: str
+    summary: str | None  # None when the LLM summary could not be generated
     results: list[SearchResultItem]

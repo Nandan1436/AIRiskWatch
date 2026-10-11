@@ -34,6 +34,6 @@ def get_digest_month(
     service: DigestService = Depends(get_digest_service),
 ) -> DigestMonthResponse:
     digest_month = date(year, month, 1)
-    if not service.in_window(digest_month):
+    if not service.in_window(digest_month, include_current=True):
         raise HTTPException(status_code=404, detail="Digest month not available")
     return service.get_month(digest_month)

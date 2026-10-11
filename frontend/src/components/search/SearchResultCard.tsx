@@ -11,7 +11,6 @@ export function SearchResultCard({ result }: { result: SearchResultItem }) {
   const location = useLocation();
   const domain = findDomainByName(result.risk_domain);
   const sub = findSubdomainByName(result.risk_subdomain)?.subdomain;
-  const score = Math.max(0, Math.min(1, result.similarity));
 
   return (
     <Link
@@ -34,13 +33,6 @@ export function SearchResultCard({ result }: { result: SearchResultItem }) {
             <Calendar />
             {formatIncidentDate(result.incident_date)}
           </span>
-        </div>
-      </div>
-      <div className={styles.score}>
-        <b>{score.toFixed(2)}</b>
-        <span>similarity</span>
-        <div className={styles.meter}>
-          <div style={{ width: `${score * 100}%` }} />
         </div>
       </div>
     </Link>

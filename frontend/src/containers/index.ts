@@ -10,7 +10,6 @@ export * from "./MonthlyDigestContainer";
 export * from "./OverviewInsightsContainer";
 export * from "./OverviewStatsContainer";
 export * from "./RecentIncidentsContainer";
-export * from "./RiskChecklistContainer";
 export * from "./SearchContainer";
 export * from "./SignInContainer";
 export * from "./SignUpContainer";

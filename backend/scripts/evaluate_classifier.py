@@ -233,10 +233,104 @@ def write_subdomain_confusion_csv(path: str, sub_conf: dict[str, dict[str, int]]
             writer.writerow([gold_sub] + [sub_conf[gold_sub][p] for p in tax.SUBDOMAINS])
 
 
+_COMPARE_ROWS = [
+    ("Domain accuracy", lambda m: _pct(m["domain_accuracy"])),
+    ("Domain macro-F1", lambda m: f"{m['macro_f1_domain']:.3f}"),
+    ("Subdomain macro-F1", lambda m: f"{m['macro_f1_subdomain']:.3f}"),
+    ("Subdomain top-1 accuracy", lambda m: _pct(m["subdomain_top1_accuracy"])),
+    ("Subdomain top-2 accuracy", lambda m: _pct(m["subdomain_top2_accuracy"])),
+    ("causal_entity accuracy", lambda m: _pct(m["per_axis_accuracy"]["causal_entity"])),
+    ("timing accuracy", lambda m: _pct(m["per_axis_accuracy"]["timing"])),
+    ("intent accuracy", lambda m: _pct(m["per_axis_accuracy"]["intent"])),
+    ("Mean confidence, correct", lambda m: _pct(m["calibration"]["mean_confidence_correct"])),
+    ("Mean confidence, incorrect", lambda m: _pct(m["calibration"]["mean_confidence_incorrect"])),
+]
+
+
+def compare_runs(run_names: list[str]) -> None:
+    """Score several runs on the incidents ALL of them predicted successfully,
+    so differences reflect the model and not the sample."""
+    runs: dict[str, dict[int, dict]] = {}
+    for name in run_names:
+        path = os.path.join(RESULTS_ROOT, name, "predictions.jsonl")
+        if not os.path.exists(path):
+            print(f"No predictions at {os.path.relpath(path)}")
+            sys.exit(1)
+        runs[name] = load_predictions(path)
+
+    common = sorted(set.intersection(*(set(p) for p in runs.values())))
+    if not common:
+        print("The runs share no successfully predicted incidents.")
+        sys.exit(1)
+
+    db = SessionLocal()
+    try:
+        gold = load_gold(db, common)
+    finally:
+        db.close()
+
+    metrics = {}
+    for name, preds in runs.items():
+        m = compute_metrics({i: preds[i] for i in common}, gold)
+        m.pop("_subdomain_confusion")
+        metrics[name] = m
+
+    models = {
+        name: next((p.get("model") for p in preds.values() if p.get("model")), "?")
+        for name, preds in runs.items()
+    }
+    lines = [
+        "# Classifier comparison\n",
+        f"Scored on the **{len(set(common) & set(gold))}** incidents every run predicted.\n",
+        "| Metric | " + " | ".join(f"{n} ({models[n]})" for n in run_names) + " |",
+        "|---|" + "---|" * len(run_names),
+    ]
+    for label, fmt in _COMPARE_ROWS:
+        lines.append(f"| {label} | " + " | ".join(fmt(metrics[n]) for n in run_names) + " |")
+    lines.append("\n## Per-domain F1\n")
+    lines.append("| Domain | " + " | ".join(run_names) + " | Support |")
+    lines.append("|---|" + "---|" * (len(run_names) + 1))
+    for domain in tax.DOMAINS:
+        support = metrics[run_names[0]]["per_domain"][domain]["support"]
+        lines.append(
+            f"| {domain} | "
+            + " | ".join(f"{metrics[n]['per_domain'][domain]['f1']:.3f}" for n in run_names)
+            + f" | {support} |"
+        )
+    report = "\n".join(lines) + "\n"
+
+    out_dir = os.path.join(RESULTS_ROOT, "compare_" + "_vs_".join(run_names))
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "metrics.json"), "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "n_common": len(set(common) & set(gold)),
+                "models": models,
+                "runs": metrics,
+                "incident_ids": common,
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+    with open(os.path.join(out_dir, "report.md"), "w", encoding="utf-8") as f:
+        f.write(report)
+    print(report)
+    print(f"Wrote metrics.json, report.md -> {os.path.relpath(out_dir)}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Phase 2 offline evaluation harness")
-    parser.add_argument("--run-name", required=True, help="subdir under eval_results/")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--run-name", help="subdir under eval_results/")
+    group.add_argument(
+        "--compare", nargs="+", metavar="RUN", help="score several runs on their shared incidents"
+    )
     args = parser.parse_args()
+
+    if args.compare:
+        compare_runs(args.compare)
+        return
 
     out_dir = os.path.join(RESULTS_ROOT, args.run_name)
     predictions_path = os.path.join(out_dir, "predictions.jsonl")

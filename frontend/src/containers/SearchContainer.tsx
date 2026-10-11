@@ -8,7 +8,6 @@ import {
   SearchResultCard,
   SearchSummary,
   type FacetOption,
-  type MinScore,
 } from "../components/search";
 import { EmptyState, ErrorMessage, LoadingSpinner, Pagination } from "../components/ui";
 import type { SearchResultItem } from "../interfaces";
@@ -25,7 +24,7 @@ export function SearchContainer() {
   return (
     <>
       <SearchBox
-        key={query}
+        key={`box:${query}`}
         initialQuery={query}
         onSubmit={(next) => setSearchParams({ q: next })}
         isLoading={isLoading}
@@ -53,7 +52,7 @@ export function SearchContainer() {
           <ErrorMessage message={error} />
         </div>
       )}
-      {hasResults && !isLoading && <SearchResults key={query} summary={summary} results={results} />}
+      {hasResults && !isLoading && <SearchResults key={`results:${query}`} summary={summary} results={results} />}
     </>
   );
 }
@@ -74,7 +73,6 @@ function countBy<T>(items: T[], key: (item: T) => string): Map<string, number> {
 function SearchResults({ summary, results }: { summary: string | null; results: SearchResultItem[] }) {
   const [domains, setDomains] = useState<string[]>([]);
   const [years, setYears] = useState<string[]>([]);
-  const [minScore, setMinScore] = useState<MinScore>("any");
   const [offset, setOffset] = useState(0);
 
   // An incident with several classifications can come back more than once.
@@ -97,12 +95,10 @@ function SearchResults({ summary, results }: { summary: string | null; results: 
     .map((o) => ({ ...o, count: yearCounts.get(o.key) ?? 0 }))
     .filter((o) => o.count > 0);
 
-  const min = minScore === "any" ? 0 : Number(minScore);
   const filtered = unique.filter(
     (r) =>
       (domains.length === 0 || domains.includes(domainKey(r))) &&
-      (years.length === 0 || years.includes(yearBucket(r.incident_date))) &&
-      r.similarity >= min,
+      (years.length === 0 || years.includes(yearBucket(r.incident_date))),
   );
 
   function toggle(list: string[], setList: (next: string[]) => void, key: string) {
@@ -117,13 +113,8 @@ function SearchResults({ summary, results }: { summary: string | null; results: 
         years={yearOptions}
         selectedDomains={domains}
         selectedYears={years}
-        minScore={minScore}
         onToggleDomain={(key) => toggle(domains, setDomains, key)}
         onToggleYear={(key) => toggle(years, setYears, key)}
-        onMinScoreChange={(value) => {
-          setMinScore(value);
-          setOffset(0);
-        }}
       />
       <div className="min-w-0">
         {summary && <SearchSummary summary={summary} />}

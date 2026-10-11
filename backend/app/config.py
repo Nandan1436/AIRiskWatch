@@ -31,16 +31,11 @@ LLM_PROVIDER: str = os.environ.get("LLM_PROVIDER", "gemini")
 GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 
-MISTRAL_API_KEY: str = os.environ.get("MISTRAL_API_KEY", "")
-MISTRAL_MODEL: str = os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
-MISTRAL_BASE_URL: str = os.environ.get("MISTRAL_BASE_URL", "https://api.mistral.ai/v1")
-
 GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
-GROQ_MODEL: str = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL: str = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 GROQ_BASE_URL: str = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-
-OLLAMA_BASE_URL: str = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-OLLAMA_MODEL: str = os.environ.get("OLLAMA_MODEL", "qwen3:4b")
+GROQ_REASONING_EFFORT: str = os.environ.get("GROQ_REASONING_EFFORT", "low")
+GROQ_MAX_COMPLETION_TOKENS: int = int(os.environ.get("GROQ_MAX_COMPLETION_TOKENS", "2048"))
 
 LLM_MAX_RPM: int = int(os.environ.get("LLM_MAX_RPM", "10"))
 LLM_TIMEOUT_S: float = float(os.environ.get("LLM_TIMEOUT_S", "60"))

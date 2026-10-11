@@ -6,7 +6,6 @@ import {
   IncidentListPage,
   MonthlyDigestPage,
   OverviewPage,
-  RiskChecklistPage,
   SearchPage,
   SignInPage,
   SignUpPage,
@@ -29,7 +28,6 @@ export function AppRoutes() {
         <Route path="/incidents" element={<IncidentListPage />} />
         <Route path="/incidents/:incidentId" element={<IncidentDetailPage />} />
         <Route path="/search" element={<SearchPage />} />
-        <Route path="/search/checklist" element={<RiskChecklistPage />} />
         <Route path="/taxonomy" element={<TaxonomyPage />} />
         <Route path="/taxonomy/domain/:domainNumber" element={<TaxonomyDomainPage />} />
         <Route path="/taxonomy/subdomain/:code" element={<TaxonomySubdomainPage />} />

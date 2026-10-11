@@ -5,7 +5,7 @@ import { MIT_DOMAINS } from "../constants/mitTaxonomy";
 import type { DigestMonth } from "../interfaces";
 import { useDigestMonth, useDigestMonths } from "../hooks";
 import { BarList } from "../components/charts";
-import { DigestHighlights, DigestMonthTabs } from "../components/digest";
+import { DigestMonthTabs } from "../components/digest";
 import { IncidentList } from "../components/incidents";
 import { PageHead, SectionHead } from "../components/layout";
 import { Card, EmptyState, ErrorMessage, LoadingSpinner, Pagination, StatCard } from "../components/ui";
@@ -104,10 +104,7 @@ function DigestMonthView({ digest, monthLabel }: { digest: DigestMonth; monthLab
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-        <Card title="Highlights" description="The month's most-reported incidents" scroll>
-          <DigestHighlights highlights={digest.highlights} />
-        </Card>
+      <div className="mt-4">
         <Card title="By risk domain" description={monthLabel}>
           <BarList
             items={digest.domain_counts.map((d) => {

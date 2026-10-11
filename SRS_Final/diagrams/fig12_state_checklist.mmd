@@ -1,0 +1,31 @@
+stateDiagram-v2
+    classDef start fill:#DBEAFE,stroke:#2563EB,color:#0F172A
+    classDef input fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
+    classDef busy fill:#FEF3C7,stroke:#D97706,color:#0F172A
+    classDef done fill:#DCFCE7,stroke:#16A34A,color:#0F172A
+    classDef empty fill:#FFEDD5,stroke:#EA580C,color:#0F172A
+    classDef error fill:#FEE2E2,stroke:#DC2626,color:#0F172A
+
+    state "Idle" as Idle
+    state "Description entered" as DescriptionEntered
+    state "Generating" as Generating
+    state "Checklist ready<br/><i>tick / untick updates progress</i>" as ChecklistReady
+    state "Nothing to check" as NothingToCheck
+    state "Error message" as ErrorMessage
+
+    [*] --> Idle: open Risk checklist tab
+    Idle --> DescriptionEntered: type a description<br/>or use example
+    DescriptionEntered --> Generating: press Generate checklist
+    Generating --> ChecklistReady: classified matches found
+    Generating --> NothingToCheck: matches not yet classified
+    Generating --> ErrorMessage: request fails
+    ChecklistReady --> DescriptionEntered: edit the description
+    NothingToCheck --> DescriptionEntered: edit the description
+    ErrorMessage --> DescriptionEntered: edit the description
+
+    class Idle start
+    class DescriptionEntered input
+    class Generating busy
+    class ChecklistReady done
+    class NothingToCheck empty
+    class ErrorMessage error

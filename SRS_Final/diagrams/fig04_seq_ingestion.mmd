@@ -1,0 +1,65 @@
+sequenceDiagram
+    autonumber
+    box rgb(254,249,195) Trigger
+        participant SC as Scheduler /<br/>Admin
+    end
+    box rgb(220,252,231) Backend
+        participant IS as Ingestion<br/>Service
+    end
+    box rgb(243,232,255) Data
+        participant DB as PostgreSQL<br/>+ pgvector
+    end
+    box rgb(219,234,254) Web
+        participant NC as news_client
+        participant NS as News site
+    end
+    box rgb(255,237,213) External
+        participant L as LLM<br/>provider
+    end
+    box rgb(243,232,255) Local model
+        participant E as Embedding<br/>model
+    end
+    box rgb(220,252,231) Backend
+        participant CS as LlmClassification<br/>Service
+    end
+
+    SC->>IS: run_ingestion_cycle()
+    IS->>DB: pg_try_advisory_lock(key)
+    alt lock held by another run
+        DB-->>IS: false
+        IS-->>SC: status = skipped
+    end
+    loop for each news source
+        IS->>NC: fetch_listing(source)
+        NC->>NS: GET listing page<br/>(robots.txt checked,<br/>polite delay)
+        NS-->>NC: HTML
+        NC-->>IS: article URLs
+        loop for each URL (up to per-source cap)
+            IS->>DB: report with this<br/>URL exists?
+            IS->>NC: fetch_article(url)
+            NC->>NS: GET article page
+            NS-->>NC: HTML
+            NC-->>IS: title, body, published date<br/>(skip if older than 24 h)
+        end
+        loop for each fresh article
+            IS->>L: Relevance check: real AI incident?
+            L-->>IS: is_incident, harm, AI system, confidence
+            opt accepted (confidence >= 0.6)
+                IS->>L: Extract report fields (title, authors, language)
+                IS->>L: Extract incident fields (title, description, parties)
+                IS->>E: embed(title + description)
+                IS->>DB: Nearest incident<br/>by cosine distance
+                alt similarity >= 0.85 (duplicate event)
+                    IS->>DB: INSERT report, link to<br/>existing incident, COMMIT
+                else new event
+                    IS->>DB: INSERT incident (+embedding)<br/>and report, link, COMMIT
+                    IS->>CS: classify_incident(incident_id)
+                    CS->>L: MIT taxonomy<br/>classification prompt
+                    L-->>CS: domain, subdomain,<br/>entity, intent, timing
+                    CS->>DB: INSERT mit_classification
+                end
+            end
+        end
+    end
+    IS->>DB: pg_advisory_unlock(key)
+    IS-->>SC: Run summary (seen, relevant,<br/>created, attached, errors)

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import func, insert, select, text as sql_text
 from sqlalchemy.orm import Session
 
-from app import config
+from app import config, prompts
 from app.core import news_client
 from app.core.embedding_client import embed_text, incident_embedding_input
 from app.core.llm_client import LlmClient, LlmClientError, create_llm_client
@@ -35,6 +35,13 @@ class IngestionError(RuntimeError):
 
 
 @dataclass
+class CreatedIncident:
+    incident_id: int
+    title: str
+    url: str
+
+
+@dataclass
 class IngestionRunSummary:
     status: str = "running"
     sources_processed: int = 0
@@ -43,6 +50,7 @@ class IngestionRunSummary:
     articles_failed: int = 0
     incidents_created: int = 0
     reports_attached: int = 0
+    created_incidents: list[CreatedIncident] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
     def record_error(self, message: str) -> None:
@@ -118,60 +126,7 @@ class IncidentFields(BaseModel):
         return [str(item).strip() for item in v if str(item).strip()]
 
 
-_RELEVANCE_SYSTEM = (
-    "You screen news articles for an AI incident database. Your job is to "
-    "decide whether an article reports a REAL AI INCIDENT that has already "
-    "happened.\n\n"
-    "An AI incident REQUIRES all three of:\n"
-    "1. A specific, identifiable AI or automated system that was actually "
-    "deployed or used in the real world.\n"
-    "2. A concrete harm, failure, or wrongdoing that ALREADY OCCURRED — not a "
-    "risk, forecast, or possibility.\n"
-    "3. Identifiable affected parties: named people, a group, an organization, "
-    "or the public.\n\n"
-    "Answer is_incident=false for all of these, however AI-related they are:\n"
-    "- Funding rounds, acquisitions, valuations, hiring, executive changes\n"
-    "- Product launches, model releases, feature announcements, demos — INCLUDING "
-    "launches of AI safety or AI security products\n"
-    "- Benchmark results, capability claims, research papers with no deployed harm\n"
-    "- Security vulnerabilities, exploits, or attacks carried out by humans using "
-    "conventional means, even when the target is an AI product. The AI must be the "
-    "thing that CAUSED the harm, not the thing that was attacked.\n"
-    "- Red-team findings, researcher demonstrations, proof-of-concept jailbreaks, "
-    "and bug-bounty writeups where the only 'victim' was the researcher's own test\n"
-    "- Analysis, retrospectives, or explainers ABOUT an earlier incident, rather "
-    "than reporting of the incident itself\n"
-    "- Opinion, commentary, editorials, predictions, 'could'/'may'/'risks that' pieces\n"
-    "- Proposed legislation, regulatory consultations, policy debate with no incident\n"
-    "- Explainers, how-to guides, listicles, reviews, interviews\n"
-    "- Lawsuits or investigations where the underlying harm is not described\n"
-    "- Purely financial or market impact with no harm to people\n\n"
-    "Answer is_incident=true for, e.g.: a deployed model that produced "
-    "discriminatory decisions; a chatbot that gave dangerous advice to a real "
-    "user; a self-driving vehicle collision; facial recognition causing a "
-    "wrongful arrest; a deepfake used to defraud someone; a system that leaked "
-    "personal data; AI-generated content that caused documented harm.\n\n"
-    "Be strict. A false positive corrupts the database; a false negative merely "
-    "misses one article. If the article is ambiguous, or if the harm is only "
-    "potential, answer false.\n\n"
-    "GROUND EVERY FIELD IN THE HEADLINE AND SUMMARY YOU ARE GIVEN. Judge only "
-    "that one article. Do not use knowledge of other articles or other incidents. "
-    "The system you name in ai_system MUST appear in the text you are given — if "
-    "you cannot point to it there, answer is_incident=false. If the harm and the "
-    "system come from different stories, answer false.\n\n"
-    "Fields:\n"
-    "- is_incident: boolean, per the rules above.\n"
-    "- harm_type: if true, the concrete harm in 2-6 words (e.g. 'wrongful "
-    "arrest', 'discriminatory loan denial'). Empty string if false.\n"
-    "- ai_system: if true, the specific system or product named IN THIS ARTICLE "
-    "that caused the harm (e.g. 'Tesla Autopilot', 'Amazon hiring algorithm'). "
-    "Empty string if false.\n"
-    "- confidence: 0 to 1, how confident you are in is_incident.\n"
-    "- reason: one sentence justifying the decision, quoting the specific words "
-    "from the headline or text that establish the harm.\n\n"
-    "Reply with ONLY a JSON object with keys: is_incident, harm_type, "
-    "ai_system, confidence, reason."
-)
+_RELEVANCE_SYSTEM = prompts.load_text("ingestion/relevance_system.md")
 
 _RELEVANCE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -192,19 +147,7 @@ _RELEVANCE_SCHEMA: dict[str, Any] = {
     ],
 }
 
-_REPORT_SYSTEM = (
-    "You extract bibliographic metadata from a news article for an incident "
-    "database. Extract ONLY what is present in the text you are given.\n\n"
-    "Fields:\n"
-    "- title: the article's headline, cleaned of site name and separators.\n"
-    "- authors: the byline as a comma-separated string. Empty string if the "
-    "text does not state an author. Never guess a name.\n"
-    "- language: ISO 639-1 code of the article's language (e.g. 'en').\n\n"
-    "Do not summarize, editorialize, or add fields. Do not infer a URL, "
-    "publication, or domain — those are supplied separately and are not your "
-    "concern.\n\n"
-    "Reply with ONLY a JSON object with keys: title, authors, language."
-)
+_REPORT_SYSTEM = prompts.load_text("ingestion/report_system.md")
 
 _REPORT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -217,30 +160,7 @@ _REPORT_SCHEMA: dict[str, Any] = {
     "propertyOrdering": ["title", "authors", "language"],
 }
 
-_INCIDENT_SYSTEM = (
-    "You write structured incident records for an AI incident database, in the "
-    "style of the AI Incident Database (AIID). You are given one news article "
-    "describing an AI incident.\n\n"
-    "Fields:\n"
-    "- title: a neutral, factual one-line description of the incident itself "
-    "(NOT the article's headline). Name the system and the harm. No "
-    "sensationalism, no clickbait punctuation.\n"
-    "- description: 2-4 sentences stating what the system did, who was "
-    "affected, and the outcome. Only facts present in the article.\n"
-    "- incident_date: when the incident occurred, as YYYY-MM-DD. Use the "
-    "article's own date only if the incident clearly happened then. Empty "
-    "string if the article does not say.\n"
-    "- alleged_deployer: organizations that DEPLOYED or operated the system.\n"
-    "- alleged_developer: organizations that BUILT the system. May be the same "
-    "as the deployer; may be empty if unstated.\n"
-    "- harmed_parties: who was harmed — specific groups or categories of "
-    "people, not individual names.\n\n"
-    "Rules: never invent an organization, date, or harm not stated in the "
-    "article. Prefer an empty list over a guess. Use the organizations' common "
-    "names.\n\n"
-    "Reply with ONLY a JSON object with keys: title, description, "
-    "incident_date, alleged_deployer, alleged_developer, harmed_parties."
-)
+_INCIDENT_SYSTEM = prompts.load_text("ingestion/incident_system.md")
 
 _INCIDENT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -374,12 +294,12 @@ def _report_url_exists(db: Session, url: str) -> bool:
 
 def filter_relevance(client: LlmClient, entry: news_client.NewsArticle) -> RelevanceVerdict:
     excerpt = _truncate(entry.body or strip_html(entry.summary), _RELEVANCE_EXCERPT_CHAR_LIMIT)
-    user = (
-        f"Source: {entry.source_name}\n"
-        f"Headline: {entry.title or '(none)'}\n"
-        f"Standfirst: {entry.summary or '(none)'}\n"
-        f"Article text (opening):\n{excerpt or '(none)'}\n\n"
-        "Decide whether this reports a real AI incident. Answer:"
+    user = prompts.render(
+        "ingestion/relevance_user.md",
+        source=entry.source_name,
+        headline=entry.title or "(none)",
+        standfirst=entry.summary or "(none)",
+        excerpt=excerpt or "(none)",
     )
     try:
         raw = client.complete_json(_RELEVANCE_SYSTEM, user, _RELEVANCE_SCHEMA)
@@ -395,10 +315,10 @@ def filter_relevance(client: LlmClient, entry: news_client.NewsArticle) -> Relev
 def extract_report_fields(
     client: LlmClient, entry: news_client.NewsArticle, body_text: str
 ) -> ReportFields:
-    user = (
-        f"Headline as published: {entry.title or '(none)'}\n\n"
-        f"Article text:\n{_truncate(body_text, _PROMPT_TEXT_CHAR_LIMIT)}\n\n"
-        "Extract the metadata. Answer:"
+    user = prompts.render(
+        "ingestion/report_user.md",
+        headline=entry.title or "(none)",
+        article_text=_truncate(body_text, _PROMPT_TEXT_CHAR_LIMIT),
     )
     try:
         raw = client.complete_json(_REPORT_SYSTEM, user, _REPORT_SCHEMA)
@@ -493,11 +413,11 @@ def attach_to_incident(
 def extract_incident_fields(
     client: LlmClient, entry: news_client.NewsArticle, body_text: str
 ) -> IncidentFields:
-    user = (
-        f"Article headline: {entry.title or '(none)'}\n"
-        f"Published: {_entry_published_date(entry) or 'unknown'}\n\n"
-        f"Article text:\n{_truncate(body_text, _PROMPT_TEXT_CHAR_LIMIT)}\n\n"
-        "Write the incident record. Answer:"
+    user = prompts.render(
+        "ingestion/incident_user.md",
+        headline=entry.title or "(none)",
+        published=_entry_published_date(entry) or "unknown",
+        article_text=_truncate(body_text, _PROMPT_TEXT_CHAR_LIMIT),
     )
     try:
         raw = client.complete_json(_INCIDENT_SYSTEM, user, _INCIDENT_SCHEMA)
@@ -620,10 +540,15 @@ def process_article(
         )
         return
 
-    create_incident(
+    incident_id = create_incident(
         db, client, entry, fields, body_text, incident_fields, embedding, summary
     )
     summary.incidents_created += 1
+    summary.created_incidents.append(
+        CreatedIncident(
+            incident_id=incident_id, title=incident_fields.title, url=entry.url
+        )
+    )
     logger.info(
         "resolve: url=%s no match (best similarity=%.4f) -> new incident",
         entry.url,

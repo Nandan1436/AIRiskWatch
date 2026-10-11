@@ -3,6 +3,7 @@ import type { Incident } from "./incident";
 export interface DigestMonthSummary {
   month: string; // first day of the month, YYYY-MM-DD
   total: number;
+  in_progress: boolean; // the current month so far; never emailed
 }
 
 export interface DigestMonthList {
