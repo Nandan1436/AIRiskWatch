@@ -1,0 +1,75 @@
+{
+  "_about": "Few-shot examples for the MIT classifier: one gold-labelled incident per domain, held out of evaluation. The title and description shown to the model are loaded from the database by incident_id; the fields below form the example answer.",
+  "examples": [
+    {
+      "incident_id": 1,
+      "risk_subdomain": "Exposure to toxic content",
+      "risk_subdomain_second": "Unfair discrimination and misrepresentation",
+      "causal_entity": "AI",
+      "timing": "Post-deployment",
+      "intent": "Unintentional",
+      "confidence": 0.9,
+      "justification": "The incident primarily reflects exposure to toxic content."
+    },
+    {
+      "incident_id": 26,
+      "risk_subdomain": "AI system security vulnerabilities and attacks",
+      "risk_subdomain_second": "Compromise of privacy by obtaining, leaking or correctly inferring sensitive information",
+      "causal_entity": "AI",
+      "timing": "Post-deployment",
+      "intent": "Unintentional",
+      "confidence": 0.9,
+      "justification": "The incident primarily reflects ai system security vulnerabilities and attacks."
+    },
+    {
+      "incident_id": 39,
+      "risk_subdomain": "False or misleading information",
+      "risk_subdomain_second": "Pollution of information ecosystem and loss of consensus reality",
+      "causal_entity": "AI",
+      "timing": "Post-deployment",
+      "intent": "Intentional",
+      "confidence": 0.9,
+      "justification": "The incident primarily reflects false or misleading information."
+    },
+    {
+      "incident_id": 28,
+      "risk_subdomain": "Fraud, scams, and targeted manipulation",
+      "risk_subdomain_second": "Disinformation, surveillance, and influence at scale",
+      "causal_entity": "AI",
+      "timing": "Post-deployment",
+      "intent": "Intentional",
+      "confidence": 0.9,
+      "justification": "The incident primarily reflects fraud, scams, and targeted manipulation."
+    },
+    {
+      "incident_id": 17,
+      "risk_subdomain": "Overreliance and unsafe use",
+      "risk_subdomain_second": "Loss of human agency and autonomy",
+      "causal_entity": "AI",
+      "timing": "Pre-deployment",
+      "intent": "Unintentional",
+      "confidence": 0.9,
+      "justification": "The incident primarily reflects overreliance and unsafe use."
+    },
+    {
+      "incident_id": 10,
+      "risk_subdomain": "Increased inequality and decline in employment quality",
+      "risk_subdomain_second": "Power centralization and unfair distribution of benefits",
+      "causal_entity": "AI",
+      "timing": "Post-deployment",
+      "intent": "Intentional",
+      "confidence": 0.9,
+      "justification": "The incident primarily reflects increased inequality and decline in employment quality."
+    },
+    {
+      "incident_id": 2,
+      "risk_subdomain": "Lack of capability or robustness",
+      "risk_subdomain_second": "Lack of transparency or interpretability",
+      "causal_entity": "AI",
+      "timing": "Post-deployment",
+      "intent": "Unintentional",
+      "confidence": 0.9,
+      "justification": "The incident primarily reflects lack of capability or robustness."
+    }
+  ]
+}

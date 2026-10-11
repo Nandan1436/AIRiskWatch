@@ -1,0 +1,148 @@
+{
+  "_source": "Domain and subdomain descriptions transcribed from the public MIT AI Risk Repository domain and causal taxonomies (Slattery et al., arXiv:2408.12622). Names use the spelling of the seed corpus's human labels, so they match the database. This is the prompt version scored as eval run dev_v2.",
+  "domains": [
+    {
+      "name": "Discrimination and Toxicity",
+      "description": "Harms from the AI system treating people unfairly or exposing them to toxic, hateful, or otherwise harmful content.",
+      "subdomains": [
+        {
+          "name": "Unfair discrimination and misrepresentation",
+          "definition": "Unequal treatment of individuals or groups by AI, often based on race, gender, or other sensitive characteristics, resulting in unfair outcomes and unfair representation of those groups."
+        },
+        {
+          "name": "Exposure to toxic content",
+          "definition": "AI that exposes users to harmful, abusive, unsafe, or inappropriate content — e.g. hate speech, violence, extremism, illegal acts, or child sexual abuse material — or content that violates community norms such as profanity, inflammatory political speech, or pornography."
+        },
+        {
+          "name": "Unequal performance across groups",
+          "definition": "Accuracy and effectiveness of AI decisions and actions depends on group membership, where AI system design choices and biased training data lead to unequal outcomes, reduced benefits, increased effort, and alienation for some groups."
+        }
+      ]
+    },
+    {
+      "name": "Privacy & Security",
+      "description": "Harms to people's privacy or to the security of AI systems and the data and systems around them.",
+      "subdomains": [
+        {
+          "name": "Compromise of privacy by obtaining, leaking or correctly inferring sensitive information",
+          "definition": "AI systems that memorize and leak sensitive personal data or infer private information about individuals without their consent — unexpected or unauthorized sharing of data can compromise privacy, assist identity theft, or leak confidential intellectual property."
+        },
+        {
+          "name": "AI system security vulnerabilities and attacks",
+          "definition": "Vulnerabilities that can be exploited in AI systems, software development toolchains, and hardware, resulting in unauthorized access, data and privacy breaches, or system manipulation causing unsafe outputs or behavior."
+        }
+      ]
+    },
+    {
+      "name": "Misinformation",
+      "description": "Harms from the AI system producing or amplifying false, misleading, or low-quality information.",
+      "subdomains": [
+        {
+          "name": "False or misleading information",
+          "definition": "AI systems that inadvertently generate or spread incorrect or deceptive information, leading to inaccurate beliefs and undermining user autonomy; users who act on false beliefs can suffer physical, emotional, or material harm."
+        },
+        {
+          "name": "Pollution of information ecosystem and loss of consensus reality",
+          "definition": "Highly personalized AI-generated content that creates 'filter bubbles' where individuals mostly see information matching their existing beliefs, undermining a shared sense of reality and weakening social cohesion and political processes."
+        }
+      ]
+    },
+    {
+      "name": "Malicious Actors & Misuse",
+      "description": "Harms from people deliberately using AI to cause harm — fraud, attacks, disinformation, surveillance, or weapons.",
+      "subdomains": [
+        {
+          "name": "Disinformation, surveillance, and influence at scale",
+          "definition": "Using AI to conduct large-scale disinformation campaigns, malicious surveillance, or targeted and sophisticated automated censorship and propaganda, aiming to manipulate political processes, public opinion, and behavior."
+        },
+        {
+          "name": "Cyberattacks, weapon development or use, and mass harm",
+          "definition": "Using AI to develop cyberweapons (e.g. cheaper, more effective malware), to develop or enhance weapons (e.g. lethal autonomous weapons, or chemical/biological/radiological/nuclear weapons), or to use weapons to cause mass harm."
+        },
+        {
+          "name": "Fraud, scams, and targeted manipulation",
+          "definition": "Using AI to gain a personal advantage over others through cheating, fraud, scams, blackmail, or targeted manipulation of beliefs or behavior — e.g. AI-facilitated plagiarism, impersonating a trusted or fake individual for financial gain, or creating humiliating or non-consensual sexual imagery."
+        }
+      ]
+    },
+    {
+      "name": "Human-Computer Interaction",
+      "description": "Harms arising from how people interact with and relate to AI systems, including overreliance and loss of agency.",
+      "subdomains": [
+        {
+          "name": "Overreliance and unsafe use",
+          "definition": "Users anthropomorphizing, trusting, or relying on AI beyond its actual capabilities, leading to emotional or material dependence and inappropriate relationships with or expectations of AI. This trust can be exploited by malicious actors or lead to harm from unsafe use in critical situations (e.g. a medical emergency), and can compromise autonomy and weaken social ties."
+        },
+        {
+          "name": "Loss of human agency and autonomy",
+          "definition": "Humans delegating key decisions to AI, or AI making decisions that diminish human control and autonomy, potentially leaving people feeling disempowered, unable to shape a fulfilling life trajectory, or cognitively enfeebled."
+        }
+      ]
+    },
+    {
+      "name": "Socioeconomic & Environmental Harms",
+      "description": "Broader societal, economic, and environmental harms from the development and deployment of AI.",
+      "subdomains": [
+        {
+          "name": "Power centralization and unfair distribution of benefits",
+          "definition": "AI-driven concentration of power and resources within certain entities or groups — especially those with access to or ownership of powerful AI systems — leading to inequitable distribution of benefits and increased societal inequality."
+        },
+        {
+          "name": "Increased inequality and decline in employment quality",
+          "definition": "Social and economic inequalities caused by widespread AI use, such as automating jobs, reducing employment quality, or producing exploitative dependencies between workers and their employers."
+        },
+        {
+          "name": "Economic and cultural devaluation of human effort",
+          "definition": "AI capable of creating economic or cultural value — including by reproducing human innovation and creativity in art, music, writing, code, or invention — destabilizing economic and social systems that rely on human effort; can reduce appreciation for human skills, disrupt creative and knowledge industries, and homogenize culture."
+        },
+        {
+          "name": "Competitive dynamics",
+          "definition": "Competition among AI developers or state-like actors in an AI 'race' to rapidly develop, deploy, and apply AI systems for strategic or economic advantage, increasing the risk of releasing unsafe, error-prone systems."
+        },
+        {
+          "name": "Governance failure",
+          "definition": "Inadequate regulatory frameworks and oversight mechanisms that fail to keep pace with AI development, leading to ineffective governance and an inability to manage AI risks appropriately."
+        },
+        {
+          "name": "Environmental harm",
+          "definition": "The development and operation of AI systems causing environmental harm, such as through data center energy consumption or the materials and carbon footprint of AI hardware."
+        }
+      ]
+    },
+    {
+      "name": "AI system safety, failures, and limitations",
+      "description": "Harms from AI systems failing, being unreliable or opaque, or pursuing goals misaligned with human intent.",
+      "subdomains": [
+        {
+          "name": "Lack of capability or robustness",
+          "definition": "AI systems that fail to perform reliably or effectively under varying conditions, exposing them to errors and failures with significant consequences — especially in critical applications or areas requiring moral reasoning."
+        },
+        {
+          "name": "Lack of transparency or interpretability",
+          "definition": "Challenges in understanding or explaining AI decision-making processes, leading to mistrust, difficulty enforcing compliance standards or holding actors accountable for harms, and an inability to identify and correct errors."
+        },
+        {
+          "name": "AI pursuing its own goals in conflict with human goals or values",
+          "definition": "AI systems acting in conflict with ethical standards or human goals and values, especially the goals of designers or users. These misaligned behaviors may be introduced during design or development (e.g. reward hacking, goal misgeneralization) and can lead the AI to use dangerous capabilities such as manipulation, deception, or situational awareness to seek power, self-proliferate, or achieve other goals."
+        }
+      ]
+    }
+  ],
+  "causal_axes": {
+    "causal_entity": {
+      "AI": "the risk arises from a decision or action made by the AI system itself, e.g. generating harmful content or disempowering humans",
+      "Human": "the risk arises from human actions, e.g. choosing poor training data, intentional malicious design, or improper use of the AI system",
+      "Other": "the focal entity is not clearly human or AI, or is ambiguous"
+    },
+    "timing": {
+      "Pre-deployment": "the risk arises before the AI system is fully developed and put into use, e.g. vulnerabilities introduced during training or coding errors",
+      "Post-deployment": "the risk arises after the AI has been deployed to end users, e.g. misuse of the AI for harmful purposes",
+      "Other": "the risk has no clearly defined time of occurrence, or may occur both before and after deployment"
+    },
+    "intent": {
+      "Intentional": "the risk occurs as an expected outcome of pursuing a specific goal, e.g. an AI intentionally programmed to act deceptively or exhibit bias",
+      "Unintentional": "the risk reflects an unintended consequence, e.g. an AI system inadvertently developing bias due to incomplete training data",
+      "Other": "intent is not clearly specified, or the risk may occur both intentionally and unintentionally"
+    }
+  }
+}

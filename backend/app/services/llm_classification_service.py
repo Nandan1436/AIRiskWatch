@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator, model_v
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app import prompts
 from app.core import mit_taxonomy as tax
 from app.core.llm_client import LlmClient
 from app.models.incident_model import Incident
@@ -148,24 +149,10 @@ class LlmClassificationService:
 
     @staticmethod
     def _build_system_prompt() -> str:
-        return (
-            "You are an expert annotator applying the MIT AI Risk Repository "
-            "taxonomy to real-world AI incidents. For the incident you are given, "
-            "choose exactly one risk_domain, then a risk_subdomain that BELONGS TO "
-            "that domain, then your second-best subdomain within the same domain "
-            "(risk_subdomain_second), then classify the three causal axes.\n\n"
-            "TAXONOMY (choose domain + subdomains from these exactly as written):\n"
-            f"{tax.taxonomy_prompt_block()}\n\n"
-            "CAUSAL AXES (choose one value each, exactly as written):\n"
-            f"{tax.axes_prompt_block()}\n\n"
-            "Output rules:\n"
-            "- risk_subdomain and risk_subdomain_second MUST be subdomains of the "
-            "chosen risk_domain, spelled exactly as above; they must differ.\n"
-            "- confidence is your confidence in the risk_domain choice, 0 to 1.\n"
-            "- justification is at most 2 sentences.\n"
-            "- Reply with ONLY a JSON object with keys: risk_domain, "
-            "risk_subdomain, risk_subdomain_second, causal_entity, timing, "
-            "intent, confidence, justification."
+        return prompts.render(
+            "classification/system.md",
+            taxonomy=tax.taxonomy_prompt_block(),
+            axes=tax.axes_prompt_block(),
         )
 
     def _build_few_shot_block(self) -> str:
@@ -176,19 +163,15 @@ class LlmClassificationService:
             inc = by_id.get(ex["incident_id"])
             if inc is None:
                 continue
-            second = self._pick_second(ex["risk_domain"], ex["risk_subdomain"])
             answer = {
                 "risk_domain": ex["risk_domain"],
                 "risk_subdomain": ex["risk_subdomain"],
-                "risk_subdomain_second": second,
+                "risk_subdomain_second": ex["risk_subdomain_second"],
                 "causal_entity": ex["causal_entity"],
                 "timing": ex["timing"],
                 "intent": ex["intent"],
-                "confidence": 0.9,
-                "justification": (
-                    f"The incident primarily reflects "
-                    f"{ex['risk_subdomain'].lower()}."
-                ),
+                "confidence": ex["confidence"],
+                "justification": ex["justification"],
             }
             blocks.append(
                 f"EXAMPLE {i}\n"
@@ -197,13 +180,6 @@ class LlmClassificationService:
                 f"Answer: {json.dumps(answer, ensure_ascii=False)}"
             )
         return "\n\n".join(blocks)
-
-    @staticmethod
-    def _pick_second(domain: str, first_subdomain: str) -> str:
-        for sub in tax.subdomains_for(domain):
-            if tax.normalize(sub) != tax.normalize(first_subdomain):
-                return sub
-        return first_subdomain
 
     def _incident_input_text(self, incident: Incident) -> str:
         parts = [
@@ -220,12 +196,10 @@ class LlmClassificationService:
         return "\n".join(parts)
 
     def _build_user_prompt(self, incident: Incident) -> str:
-        return (
-            "Here are labelled examples:\n\n"
-            f"{self._few_shot}\n\n"
-            "Now classify this incident:\n"
-            f"{self._incident_input_text(incident)}\n"
-            "Answer:"
+        return prompts.render(
+            "classification/user.md",
+            examples=self._few_shot,
+            incident=self._incident_input_text(incident),
         )
 
     def _load_incidents(self, incident_ids: list[int]) -> list[Incident]:
@@ -256,12 +230,8 @@ class LlmClassificationService:
         try:
             return LlmClassification.from_raw(raw)
         except ValidationError as first_error:
-            repair_user = (
-                f"{user}\n\n"
-                f"Your previous answer was invalid: {first_error}. "
-                f"Return a corrected JSON object; ensure risk_subdomain and "
-                f"risk_subdomain_second belong to the chosen risk_domain and use "
-                f"the exact taxonomy spellings."
+            repair_user = prompts.render(
+                "classification/repair.md", prompt=user, error=str(first_error)
             )
             raw = self.client.complete_json(self._system, repair_user, self._schema)
             try:

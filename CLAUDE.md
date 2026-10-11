@@ -97,6 +97,10 @@ Both packages need `.env` copied from `.env.example`.
   each month) and its atomic claim upsert is what prevents duplicate sends.
   Sending needs the `SMTP_*` keys; the cron (`DIGEST_EMAIL_ENABLED`) shares
   the ingestion scheduler and has the same single-worker caveat.
+- All LLM prompts, the MIT taxonomy definitions, and the few-shot examples
+  are files in `backend/app/prompts/` (see its README), not strings in code.
+  `mit_taxonomy.py` derives the allowed labels from `taxonomy.json`, so a
+  renamed subdomain there changes validation too.
 - Only the MIT taxonomy data is in scope. CSET/GMF classifications, the
   mitigation crosswalk, and entity-graph data are deferred; don't assume
   models or routes exist for them.
