@@ -21,6 +21,10 @@ def strip_taxonomy_prefix(value):
 
 
 def get_conn():
+    # Same precedence as app/config.py: a full DATABASE_URL wins over POSTGRES_*.
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        return psycopg2.connect(database_url.replace("postgresql+psycopg2://", "postgresql://", 1))
     return psycopg2.connect(
         dbname=os.environ["POSTGRES_DB"],
         user=os.environ["POSTGRES_USER"],
