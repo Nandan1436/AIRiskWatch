@@ -31,4 +31,11 @@ NEWS_SOURCES: tuple[NewsSource, ...] = (
         domain="thedailystar.net",
         newest_first=True,
     ),
+    NewsSource(
+        name="CNN AI",
+        listing_url="https://edition.cnn.com/business/tech/ai-news-artificial-intelligence-updates",
+        domain="cnn.com",
+        # URLs carry only the date, so same-day order isn't guaranteed.
+        newest_first=False,
+    ),
 )

@@ -110,14 +110,15 @@ Both packages need `.env` copied from `.env.example`.
 - **All outbound HTTP goes through `app/core/news_client.py`** (robots.txt,
   identifying user agent, timeout, politeness delay, cached robots.txt). Never
   call `RobotFileParser.read()`; it fetches on its own. Site scrapers
-  (`wired_scraper.py`, `dailystar_scraper.py`) must stay pure HTML-to-data
+  (`wired_scraper.py`, `dailystar_scraper.py`, `cnn_scraper.py`) must stay pure HTML-to-data
   functions (`parse_listing`, `parse_article`), registered in
   `news_client._SCRAPERS`.
 - **Discovery is listing-page scraping, not RSS.** Each `NewsSource` has a
   `listing_url`; only articles whose page-reported publish time is within
   `INGESTION_LOOKBACK_HOURS` (default 24) are kept. `newest_first=True` lets
   discovery stop at the first stale article (Daily Star sorts by node ID);
-  Wired listings aren't ordered, so it fetches up to the per-source cap.
+  Wired listings aren't ordered, and CNN URLs carry only the date, so both
+  fetch up to the per-source cap.
 - **The advisory lock is load-bearing.** `incident_id` / `report_number` are
   allocated as `MAX + 1`, which is safe only under the lock, and the lock must
   be taken and released on the same dedicated connection.

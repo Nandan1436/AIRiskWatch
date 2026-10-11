@@ -9,7 +9,7 @@ from urllib.robotparser import RobotFileParser
 import httpx
 
 from app import config
-from app.core import dailystar_scraper, wired_scraper
+from app.core import cnn_scraper, dailystar_scraper, wired_scraper
 from app.core.news_sources import NewsSource
 from app.core.scraper_common import SiteScraper
 
@@ -24,6 +24,7 @@ _robots_cache: dict[str, tuple[float, RobotFileParser | None]] = {}
 _SCRAPERS: dict[str, SiteScraper] = {
     "wired.com": wired_scraper,
     "thedailystar.net": dailystar_scraper,
+    "cnn.com": cnn_scraper,
 }
 
 
