@@ -16,7 +16,6 @@ from app.schemas.digest_schema import (
 from app.schemas.incident_schema import IncidentResponse
 
 DIGEST_MONTH_COUNT = 5
-HIGHLIGHT_COUNT = 2
 UNCLASSIFIED = "Unclassified"
 
 
@@ -128,10 +127,6 @@ class DigestService:
             )
             domain_totals[domain] = domain_totals.get(domain, 0) + 1
 
-        highlights = sorted(
-            items, key=lambda item: (item.report_count, item.digest_date), reverse=True
-        )[:HIGHLIGHT_COUNT]
-
         return DigestMonthResponse(
             month=month,
             total=len(items),
@@ -142,7 +137,6 @@ class DigestService:
                     domain_totals.items(), key=lambda pair: pair[1], reverse=True
                 )
             ],
-            highlights=highlights,
             incidents=items,
         )
 

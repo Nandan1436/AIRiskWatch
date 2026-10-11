@@ -26,7 +26,6 @@ export interface DigestMonth {
   total: number;
   previous_total: number;
   domain_counts: DigestDomainCount[];
-  highlights: DigestIncident[];
   incidents: DigestIncident[];
 }
 

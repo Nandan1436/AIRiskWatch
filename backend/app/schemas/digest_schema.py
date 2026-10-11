@@ -31,7 +31,6 @@ class DigestMonthResponse(BaseModel):
     total: int
     previous_total: int
     domain_counts: list[DigestDomainCount]
-    highlights: list[DigestIncident]
     incidents: list[DigestIncident]
 
 
